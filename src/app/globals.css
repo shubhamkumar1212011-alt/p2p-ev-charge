@@ -1,8 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0b0d10;
+  --foreground: #f5f7f6;
+  --lime: #a3ff12;
+  --spotify-green: #1ed760;
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -12,41 +15,489 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 6rem;
+  background: var(--background);
 }
 
 body {
+  margin: 0;
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+::selection {
+  color: #0b0d10;
+  background: #a3ff12;
+}
+
+.app-shell {
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse at 50% -20%, rgb(30 215 96 / 7%), transparent 42%),
+    #0b0d10;
+}
+
+.ambient-orb {
+  position: absolute;
+  z-index: 0;
+  width: 25rem;
+  height: 25rem;
+  border-radius: 9999px;
+  pointer-events: none;
+  filter: blur(115px);
+  opacity: 0.14;
+}
+
+.ambient-orb-one {
+  top: 8rem;
+  right: -15rem;
+  background: #1ed760;
+}
+
+.ambient-orb-two {
+  top: 54rem;
+  left: -18rem;
+  background: #a3ff12;
+  opacity: 0.07;
+}
+
+.glass-nav {
+  border: 1px solid rgb(255 255 255 / 8%);
+  background: rgb(20 24 31 / 76%);
+  box-shadow: 0 16px 55px rgb(0 0 0 / 28%);
+  backdrop-filter: blur(22px);
+}
+
+.brand-mark {
+  box-shadow: 0 0 25px rgb(30 215 96 / 28%);
+}
+
+.glass-panel {
+  border: 1px solid rgb(255 255 255 / 8%);
+  background:
+    linear-gradient(145deg, rgb(255 255 255 / 2.8%), transparent 52%),
+    #14181f;
+  box-shadow:
+    0 20px 70px rgb(0 0 0 / 25%),
+    inset 0 1px 0 rgb(255 255 255 / 2%);
+}
+
+.hero-section,
+.finder-section,
+#how-it-works {
+  z-index: 1;
+}
+
+.hero-gradient-text {
+  background: linear-gradient(100deg, #f8fff8 2%, #a3ff12 50%, #1ed760 100%);
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.live-badge {
+  box-shadow: 0 0 32px rgb(163 255 18 / 5%);
+}
+
+.stat-pill {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 2.5%);
+  padding: 7px 13px;
+  color: #b7bec2;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.stat-pill-icon {
+  display: grid;
+  width: 23px;
+  height: 23px;
+  place-items: center;
+  border-radius: 9999px;
+  background: rgb(163 255 18 / 10%);
+  color: #c6ff73;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.primary-cta {
+  display: inline-flex;
+  min-height: 54px;
+  align-items: center;
+  gap: 18px;
+  border-radius: 9999px;
+  background: #1ed760;
+  padding: 7px 8px 7px 22px;
+  color: #07110a;
+  font-size: 13px;
+  font-weight: 800;
+  box-shadow: 0 8px 35px rgb(30 215 96 / 17%);
+  transition:
+    transform 180ms ease,
+    background 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.primary-cta:hover {
+  transform: translateY(-2px);
+  background: #a3ff12;
+  box-shadow: 0 10px 40px rgb(163 255 18 / 20%);
+}
+
+.hero-art {
+  isolation: isolate;
+  background: radial-gradient(circle, rgb(163 255 18 / 7%), transparent 58%);
+}
+
+.hero-orbit {
+  position: absolute;
+  border: 1px solid rgb(163 255 18 / 9%);
+  border-radius: 9999px;
+  transform: rotate(-24deg);
+}
+
+.hero-orbit-outer {
+  width: min(94%, 490px);
+  aspect-ratio: 1;
+  border-style: dashed;
+  opacity: 0.7;
+  animation: orbit-rotate 48s linear infinite;
+}
+
+.hero-orbit-inner {
+  width: min(76%, 390px);
+  aspect-ratio: 1;
+  border-color: rgb(30 215 96 / 13%);
+  box-shadow: 0 0 45px rgb(30 215 96 / 5%);
+  animation: orbit-rotate 35s linear infinite reverse;
+}
+
+.hero-orbit-dot {
+  position: absolute;
+  top: 18%;
+  right: 22%;
+  width: 9px;
+  height: 9px;
+  border-radius: 9999px;
+  background: #a3ff12;
+  box-shadow: 0 0 20px 5px rgb(163 255 18 / 35%);
+}
+
+.hero-energy-core {
+  position: relative;
+  display: grid;
+  width: min(68vw, 320px);
+  aspect-ratio: 1;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgb(163 255 18 / 15%);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 35%, rgb(163 255 18 / 10%), transparent 52%),
+    rgb(20 24 31 / 78%);
+  box-shadow:
+    0 0 100px rgb(30 215 96 / 11%),
+    inset 0 0 55px rgb(163 255 18 / 4%);
+  backdrop-filter: blur(10px);
+}
+
+.energy-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgb(255 255 255 / 3%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 3%) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: radial-gradient(circle, #000 4%, transparent 72%);
+}
+
+.hero-float-card {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  border: 1px solid rgb(255 255 255 / 9%);
+  border-radius: 15px;
+  background: rgb(20 24 31 / 88%);
+  padding: 10px 13px;
+  box-shadow: 0 18px 45px rgb(0 0 0 / 35%);
+  backdrop-filter: blur(16px);
+  animation: float-card 5s ease-in-out infinite;
+}
+
+.hero-float-top {
+  top: 20%;
+  left: 1%;
+}
+
+.hero-float-bottom {
+  right: 1%;
+  bottom: 17%;
+  animation-delay: -2.5s;
+}
+
+.finder-grid {
+  align-items: stretch;
+}
+
+.charger-card {
+  outline: none;
+}
+
+.charger-card:focus-visible {
+  border-color: #a3ff12;
+  box-shadow: 0 0 0 2px rgb(163 255 18 / 20%);
+}
+
+.skeleton-line {
+  background: linear-gradient(
+    105deg,
+    rgb(255 255 255 / 3%) 20%,
+    rgb(255 255 255 / 7%) 48%,
+    rgb(255 255 255 / 3%) 72%
+  );
+  background-size: 220% 100%;
+  animation: skeleton-shimmer 1.8s ease-in-out infinite;
 }
 
 .leaflet-container {
   width: 100%;
   height: 100%;
-  background: #18181b;
-  font-family: inherit;
+  background: #0b0d10;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+.leaflet-control-zoom {
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 12%) !important;
+  border-radius: 11px !important;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 30%) !important;
+}
+
+.leaflet-control-zoom a {
+  border-color: rgb(255 255 255 / 8%) !important;
+  background: #14181f !important;
+  color: #e4e9e5 !important;
+}
+
+.leaflet-control-zoom a:hover {
+  background: #20262e !important;
+  color: #a3ff12 !important;
+}
+
+.leaflet-control-attribution {
+  border: 1px solid rgb(255 255 255 / 7%);
+  border-radius: 7px 0 0;
+  background: rgb(11 13 16 / 78%) !important;
+  color: #8b9490 !important;
+  backdrop-filter: blur(10px);
+}
+
+.leaflet-control-attribution a {
+  color: #a3ff12 !important;
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  border: 1px solid rgb(255 255 255 / 10%);
+  background: #14181f;
+  color: #e9eee9;
+  box-shadow: 0 16px 40px rgb(0 0 0 / 50%);
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 14px;
+}
+
+.leaflet-popup-content {
+  margin: 14px;
+  line-height: 1.55;
+}
+
+.leaflet-popup-close-button {
+  color: #8b9490 !important;
 }
 
 .charger-map-pin,
 .ev-map-pin {
+  position: relative;
   display: block;
-  width: 18px;
-  height: 18px;
-  border: 3px solid white;
+  width: 15px;
+  height: 15px;
+  border: 2px solid #ecffd0;
   border-radius: 9999px;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 45%);
 }
 
 .charger-map-pin {
-  background: #10b981;
+  background: #a3ff12;
+  box-shadow:
+    0 0 9px 2px rgb(163 255 18 / 70%),
+    0 0 24px rgb(30 215 96 / 75%);
+}
+
+.charger-map-pin::after,
+.ev-map-pin::after {
+  position: absolute;
+  inset: -8px;
+  border: 1px solid currentColor;
+  border-radius: inherit;
+  content: "";
+  opacity: 0.65;
+  animation: marker-pulse 2.2s ease-out infinite;
+}
+
+.charger-map-pin::after {
+  color: #a3ff12;
+}
+
+.charger-map-pin.is-selected {
+  transform: scale(1.13);
+  box-shadow:
+    0 0 12px 3px rgb(163 255 18 / 85%),
+    0 0 34px rgb(30 215 96 / 90%);
 }
 
 .ev-map-pin {
-  background: #3b82f6;
-  box-shadow: 0 0 0 5px rgb(59 130 246 / 28%), 0 2px 8px rgb(0 0 0 / 45%);
+  border-color: #dbeafe;
+  background: #60a5fa;
+  color: #60a5fa;
+  box-shadow:
+    0 0 10px 3px rgb(96 165 250 / 80%),
+    0 0 28px rgb(59 130 246 / 90%);
+  animation: ev-glow 2.4s ease-in-out infinite;
+}
+
+.map-location-legend {
+  position: absolute;
+  z-index: 600;
+  bottom: 14px;
+  left: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgb(255 255 255 / 9%);
+  border-radius: 9999px;
+  background: rgb(11 13 16 / 82%);
+  padding: 8px 11px;
+  color: #c5ccc7;
+  font-size: 10px;
+  font-weight: 600;
+  backdrop-filter: blur(12px);
+}
+
+.map-legend-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+}
+
+.map-legend-charger {
+  margin-left: 1px;
+  background: #a3ff12;
+  box-shadow: 0 0 9px #a3ff12;
+}
+
+.map-legend-ev {
+  margin-left: 5px;
+  background: #60a5fa;
+  box-shadow: 0 0 9px #60a5fa;
+}
+
+.booking-drawer {
+  animation: drawer-up 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes marker-pulse {
+  0% {
+    transform: scale(0.5);
+    opacity: 0.72;
+  }
+  100% {
+    transform: scale(1.65);
+    opacity: 0;
+  }
+}
+
+@keyframes ev-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 8px 2px rgb(96 165 250 / 72%),
+      0 0 22px rgb(59 130 246 / 65%);
+  }
+  50% {
+    box-shadow:
+      0 0 13px 4px rgb(96 165 250 / 95%),
+      0 0 34px rgb(59 130 246 / 90%);
+  }
+}
+
+@keyframes orbit-rotate {
+  to {
+    transform: rotate(336deg);
+  }
+}
+
+@keyframes float-card {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes skeleton-shimmer {
+  to {
+    background-position: -220% 0;
+  }
+}
+
+@keyframes drawer-up {
+  from {
+    transform: translateY(40px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .hero-float-top {
+    top: 12%;
+    left: -1%;
+  }
+
+  .hero-float-bottom {
+    right: -1%;
+    bottom: 12%;
+  }
+
+  .hero-float-card {
+    transform: scale(0.9);
+    transform-origin: center;
+  }
 }
