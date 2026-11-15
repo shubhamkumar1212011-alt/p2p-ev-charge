@@ -12,11 +12,13 @@
 
 ## Core models
 
-- **User**: account with role `DRIVER` or `HOST`
+- **User**: account with role `DRIVER` or `HOST`; password credentials are stored
+  as bcrypt hashes
 - **Charger**: `hostId`, `title`, `exactAddress`, `approxLat`, `approxLng`,
   `connectorType`, `powerKw`, `pricePerHour`, and `isAvailable`
 - **Booking**: `driverId`, `chargerId`, `startTime`, `endTime`, `totalAmount`,
-  `status`, `unlockPin`, and `paymentId`
+  `status` (`PENDING`, `CONFIRMED`, `ACTIVE`, `CANCELLED`, or `COMPLETED`),
+  `unlockPin`, and `paymentId`
 
 ## Mandatory security rules
 

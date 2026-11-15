@@ -22,6 +22,7 @@ enum ConnectorType {
 enum BookingStatus {
   PENDING
   CONFIRMED
+  ACTIVE
   CANCELLED
   COMPLETED
 }
@@ -30,6 +31,7 @@ model User {
   id             String    @id @default(cuid())
   name           String
   email          String    @unique
+  passwordHash   String?
   role           Role      @default(DRIVER)
   createdAt      DateTime  @default(now())
   hostedChargers Charger[] @relation("HostChargers")
