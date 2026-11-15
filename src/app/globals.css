@@ -380,6 +380,86 @@ body {
   animation: ev-glow 2.4s ease-in-out infinite;
 }
 
+.station-map-marker {
+  position: relative;
+  display: block;
+  width: 84px;
+  height: 48px;
+}
+
+.station-map-distance {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 1px solid rgb(163 255 18 / 32%);
+  border-radius: 9999px;
+  background: rgb(11 13 16 / 92%);
+  padding: 3px 7px;
+  color: #d9ff9a;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1.15;
+  white-space: nowrap;
+  box-shadow: 0 0 15px rgb(30 215 96 / 20%);
+  backdrop-filter: blur(8px);
+}
+
+.station-map-dot {
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  width: 15px;
+  height: 15px;
+  transform: translateX(-50%);
+  border: 2px solid #ecffd0;
+  border-radius: 9999px;
+  background: #a3ff12;
+  box-shadow:
+    0 0 9px 2px rgb(163 255 18 / 70%),
+    0 0 24px rgb(30 215 96 / 75%);
+}
+
+.station-map-dot::after {
+  position: absolute;
+  inset: -8px;
+  border: 1px solid #a3ff12;
+  border-radius: inherit;
+  content: "";
+  opacity: 0.65;
+  animation: marker-pulse 2.2s ease-out infinite;
+}
+
+.station-map-marker.is-selected .station-map-distance {
+  border-color: rgb(163 255 18 / 78%);
+  background: #1ed760;
+  color: #07110a;
+}
+
+.station-map-marker.is-selected .station-map-dot {
+  transform: translateX(-50%) scale(1.2);
+  box-shadow:
+    0 0 12px 3px rgb(163 255 18 / 85%),
+    0 0 34px rgb(30 215 96 / 90%);
+}
+
+.ev-direction-marker {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  transform: rotate(var(--ev-heading, 0deg));
+  animation: ev-glow 2.4s ease-in-out infinite;
+}
+
+.ev-direction-arrow {
+  color: #60a5fa;
+  font-size: 28px;
+  line-height: 1;
+  -webkit-text-stroke: 1px #eff6ff;
+  filter: drop-shadow(0 0 8px #3b82f6) drop-shadow(0 0 15px #60a5fa);
+}
+
 .map-location-legend {
   position: absolute;
   z-index: 600;
@@ -421,7 +501,12 @@ body {
 }
 
 .station-booking-panel {
+  min-width: 0;
   animation: station-slide-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.console-status-pill {
+  min-height: 48px;
 }
 
 @keyframes marker-pulse {
@@ -505,6 +590,22 @@ body {
 }
 
 @media (max-width: 640px) {
+  .explore-panel {
+    top: 76px;
+    right: 12px;
+    bottom: auto;
+    left: 12px;
+    width: auto;
+    max-height: min(45svh, 370px);
+  }
+
+  .active-pass-card {
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
+    width: auto;
+  }
+
   .hero-float-top {
     top: 12%;
     left: -1%;

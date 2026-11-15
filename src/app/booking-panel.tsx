@@ -254,7 +254,7 @@ export default function BookingPanel({
   }
 
   return (
-    <section className="station-booking-panel relative h-full overflow-y-auto bg-[#11151B] p-4">
+    <section className="station-booking-panel absolute bottom-5 right-5 z-[1300] flex max-h-[calc(100vh-110px)] w-[420px] max-w-[calc(100%-2.5rem)] flex-col overflow-y-auto rounded-3xl border border-white/10 bg-[#0B0D10]/90 p-4 text-white shadow-2xl shadow-black/50 backdrop-blur-xl max-sm:bottom-0 max-sm:left-0 max-sm:right-0 max-sm:max-h-[82svh] max-sm:w-auto max-sm:max-w-none max-sm:rounded-b-none max-sm:rounded-t-3xl max-sm:p-5">
       {checkoutOpen && sandboxAvailable && (
         <div
           className="absolute inset-0 z-30 overflow-y-auto bg-[#0B0D10]/95 p-4 backdrop-blur-xl"

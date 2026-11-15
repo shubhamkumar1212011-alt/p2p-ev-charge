@@ -19,12 +19,16 @@ import {
 
 type ChargerMapProps = {
   user: AuthUser;
+  onLogout: () => void;
+  isLoggingOut: boolean;
+  logoutError: string | null;
 };
 
 type LocationPoint = {
   lat: number;
   lng: number;
   label: string;
+  heading?: number;
 };
 
 type LocationResult = {
@@ -40,11 +44,8 @@ type ActivePass = {
 
 type StationFilter =
   | "ALL"
-  | "TYPE_2"
-  | "CCS2"
-  | "TYPE_1"
-  | "CHADEMO"
-  | "FUEL";
+  | "FAST"
+  | "AVAILABLE";
 
 const fallbackLocation: LocationPoint = {
   lat: 12.9716,
@@ -54,33 +55,28 @@ const fallbackLocation: LocationPoint = {
 
 const filters: { value: StationFilter; label: string }[] = [
   { value: "ALL", label: "All" },
-  { value: "TYPE_2", label: "Type 2" },
-  { value: "CCS2", label: "CCS2" },
-  { value: "TYPE_1", label: "Type 1" },
-  { value: "CHADEMO", label: "CHAdeMO" },
-  { value: "FUEL", label: "Fuel stops" },
+  { value: "FAST", label: "Fast Charger" },
+  { value: "AVAILABLE", label: "Available" },
 ];
 
-const chargerIcon = L.divIcon({
-  className: "",
-  html: '<span class="charger-map-pin" aria-hidden="true"></span>',
-  iconSize: [30, 30],
-  iconAnchor: [15, 15],
-});
+function chargerIcon(charger: PublicCharger, selected: boolean) {
+  const distance = charger.distanceKm.toFixed(1);
+  return L.divIcon({
+    className: "",
+    html: `<span class="station-map-marker${selected ? " is-selected" : ""}" aria-label="${distance} kilometers away"><span class="station-map-distance">${distance} km</span><span class="station-map-dot" aria-hidden="true"></span></span>`,
+    iconSize: [84, 48],
+    iconAnchor: [42, 44],
+  });
+}
 
-const selectedChargerIcon = L.divIcon({
-  className: "",
-  html: '<span class="charger-map-pin is-selected" aria-hidden="true"></span>',
-  iconSize: [34, 34],
-  iconAnchor: [17, 17],
-});
-
-const evIcon = L.divIcon({
-  className: "",
-  html: '<span class="ev-map-pin" aria-hidden="true"></span>',
-  iconSize: [30, 30],
-  iconAnchor: [15, 15],
-});
+function evIcon(heading = 0) {
+  return L.divIcon({
+    className: "",
+    html: `<span class="ev-direction-marker" style="--ev-heading:${heading}deg" aria-label="Your EV location"><span class="ev-direction-arrow" aria-hidden="true">▲</span></span>`,
+    iconSize: [38, 38],
+    iconAnchor: [19, 19],
+  });
+}
 
 const inrFormatter = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -163,7 +159,7 @@ function ActivePassCard({
   }
 
   return (
-    <aside className="active-pass-card absolute bottom-4 right-4 z-[700] w-[min(390px,calc(100%-2rem))] rounded-3xl border border-white/10 bg-[#14181F]/95 p-4 text-white shadow-2xl shadow-black/60 backdrop-blur-xl sm:bottom-6 sm:right-6 sm:p-5">
+    <aside className="active-pass-card absolute bottom-4 right-4 z-[1200] w-[min(390px,calc(100%-2rem))] rounded-3xl border border-white/10 bg-[#14181F]/95 p-4 text-white shadow-2xl shadow-black/60 backdrop-blur-xl sm:bottom-6 sm:right-6 sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-lime-300">
@@ -229,10 +225,17 @@ function ActivePassCard({
   );
 }
 
-export default function ChargerMap({ user }: ChargerMapProps) {
+export default function ChargerMap({
+  user,
+  onLogout,
+  isLoggingOut,
+  logoutError,
+}: ChargerMapProps) {
   const [location, setLocation] = useState(fallbackLocation);
+  const [evLocation, setEvLocation] = useState(fallbackLocation);
   const [locationMessage, setLocationMessage] = useState<string | null>(null);
   const [isLocating, setIsLocating] = useState(false);
+  const [hasGpsFix, setHasGpsFix] = useState(false);
   const [chargers, setChargers] = useState<PublicCharger[]>([]);
   const [selectedCharger, setSelectedCharger] =
     useState<PublicCharger | null>(null);
@@ -252,6 +255,8 @@ export default function ChargerMap({ user }: ChargerMapProps) {
     if (!navigator.geolocation) {
       if (force || !manualLocationSelected.current) {
         setLocation(fallbackLocation);
+        setEvLocation(fallbackLocation);
+        setHasGpsFix(false);
         setLocationMessage(
           "GPS is unavailable. Showing Bengaluru; search any location.",
         );
@@ -267,11 +272,15 @@ export default function ChargerMap({ user }: ChargerMapProps) {
           setIsLocating(false);
           return;
         }
-        setLocation({
+        const liveLocation = {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
           label: "Your live location",
-        });
+          heading: position.coords.heading ?? 0,
+        };
+        setLocation(liveLocation);
+        setEvLocation(liveLocation);
+        setHasGpsFix(true);
         setSelectedCharger(null);
         setLocationSearch("");
         setLocationResults([]);
@@ -280,6 +289,8 @@ export default function ChargerMap({ user }: ChargerMapProps) {
       () => {
         if (force || !manualLocationSelected.current) {
           setLocation(fallbackLocation);
+          setEvLocation(fallbackLocation);
+          setHasGpsFix(false);
           setLocationMessage(
             "Location permission was denied. Showing Bengaluru; search any location.",
           );
@@ -384,8 +395,9 @@ export default function ChargerMap({ user }: ChargerMapProps) {
     () =>
       chargers.filter((charger) => {
         if (filter === "ALL") return true;
-        if (filter === "FUEL") return charger.stationType === "FUEL";
-        return charger.connectorType === filter;
+        if (filter === "FAST") return charger.powerKw >= 22;
+        if (filter === "AVAILABLE") return charger.isAvailable;
+        return true;
       }),
     [chargers, filter],
   );
@@ -410,28 +422,121 @@ export default function ChargerMap({ user }: ChargerMapProps) {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-      <aside className="station-sidebar flex h-[55%] min-h-0 w-full flex-none flex-col border-b border-white/[0.08] bg-[#11151B]/95 md:h-full md:w-[420px] md:border-b-0 md:border-r">
-        <div className="border-b border-white/[0.07] p-4">
-          <div className="flex items-center justify-between gap-3">
+    <div className="fixed inset-0 h-full w-full overflow-hidden bg-[#0B0D10]">
+      <MapContainer
+        center={[fallbackLocation.lat, fallbackLocation.lng]}
+        zoom={13}
+        scrollWheelZoom
+        className="absolute inset-0 h-full w-full"
+        aria-label="Interactive OpenStreetMap with nearby stations"
+      >
+        <TileLayer
+          attribution="&copy; OpenStreetMap contributors"
+          url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        <MapFocus charger={selectedCharger} location={location} />
+        <Marker
+          position={[evLocation.lat, evLocation.lng]}
+          icon={evIcon(evLocation.heading)}
+        >
+          <Popup>
+            <strong>Your EV location</strong>
+            <br />
+            {evLocation.label}
+          </Popup>
+        </Marker>
+        {filteredChargers.map((charger) => (
+          <Marker
+            key={charger.id}
+            position={[charger.approxLat, charger.approxLng]}
+            icon={chargerIcon(charger, selectedCharger?.id === charger.id)}
+            eventHandlers={{ click: () => setSelectedCharger(charger) }}
+          >
+            <Popup>
+              <div className="min-w-40 space-y-1">
+                <p className="font-bold text-white">{charger.title}</p>
+                <p>
+                  {charger.stationType === "FUEL"
+                    ? "Fuel / EV stop · estimated specs"
+                    : `${charger.powerKw} kW · estimated rate`}
+                </p>
+                <p className="font-semibold text-white">
+                  {inrFormatter.format(charger.pricePerHour)} / hour
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setSelectedCharger(charger)}
+                  className="mt-1 w-full rounded-lg bg-[#1ED760] px-3 py-2 text-xs font-extrabold text-zinc-950 hover:bg-[#A3FF12]"
+                >
+                  Book station
+                </button>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+      </MapContainer>
+
+      <header className="console-status-pill absolute left-1/2 top-4 z-[1400] flex w-[min(760px,calc(100%-1.5rem))] -translate-x-1/2 items-center justify-between gap-3 rounded-full border border-white/10 bg-[#0B0D10]/80 px-3 py-2 text-white shadow-2xl shadow-black/30 backdrop-blur-xl sm:top-5 sm:px-5 sm:py-2.5">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#1ED760] text-zinc-950 shadow-[0_0_22px_rgba(30,215,96,0.28)]">
+            <svg aria-hidden="true" viewBox="0 0 20 20" className="size-4" fill="currentColor">
+              <path d="M11.16 1.7 4.7 10.1a.75.75 0 0 0 .6 1.2h4.02l-.48 6.99a.25.25 0 0 0 .45.17l6.03-8.8a.75.75 0 0 0-.62-1.17h-3.89l.8-6.57a.25.25 0 0 0-.45-.2Z" />
+            </svg>
+          </span>
+          <span className="truncate text-[10px] font-black tracking-[0.13em] sm:text-xs">
+            P2P EV CHARGE
+          </span>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2 py-1.5 text-[9px] font-semibold text-zinc-300 sm:px-3 sm:text-[10px]">
+            <span className={`size-1.5 rounded-full ${hasGpsFix ? "bg-sky-400 shadow-[0_0_9px_#38bdf8]" : "bg-zinc-500"}`} />
+            <span className="sm:hidden">{isLocating ? "GPS…" : hasGpsFix ? "GPS" : "GPS —"}</span>
+            <span className="hidden sm:inline">{isLocating ? "GPS locating" : hasGpsFix ? "GPS Connected" : "GPS fallback"}</span>
+          </span>
+          <span className="inline-flex rounded-full border border-white/10 bg-white/[0.04] px-2 py-1.5 text-[9px] font-semibold text-zinc-300 sm:px-3 sm:text-[10px]">
+            {isLoading ? "…" : <><span className="sm:hidden">{chargers.length}</span><span className="hidden sm:inline">{chargers.length} stations</span></>}
+          </span>
+          <button
+            type="button"
+            onClick={onLogout}
+            disabled={isLoggingOut}
+            className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-2 text-[10px] font-bold text-zinc-200 transition hover:border-lime-300/30 hover:bg-lime-300/10 hover:text-lime-100 disabled:opacity-50 sm:px-4 sm:text-[11px]"
+          >
+            {isLoggingOut ? "Signing out…" : "Log Out"}
+          </button>
+        </div>
+        {logoutError && (
+          <p className="absolute right-2 top-[calc(100%+0.5rem)] rounded-xl border border-rose-300/20 bg-[#14181F] px-3 py-2 text-xs text-rose-300 shadow-xl" role="alert">
+            {logoutError}
+          </p>
+        )}
+      </header>
+
+      <aside
+        className={`explore-panel absolute left-5 top-24 bottom-5 z-[1100] flex w-[380px] max-h-[calc(100vh-110px)] flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#0B0D10]/85 text-white shadow-2xl shadow-black/40 backdrop-blur-xl ${
+          selectedCharger ? "hidden lg:flex" : "flex"
+        }`}
+      >
+        <div className="border-b border-white/[0.08] p-4">
+          <div className="flex items-start justify-between gap-2">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-lime-300">
-                Global station finder
+                Live discovery
               </p>
-              <h1 className="mt-1 text-lg font-bold tracking-tight text-white">
-                Nearby energy
+              <h1 className="mt-1 text-lg font-bold tracking-tight">
+                Explore Charger Hubs
               </h1>
             </div>
             <button
               type="button"
               onClick={() => requestGps()}
               disabled={isLocating}
-              className="rounded-full border border-lime-300/20 bg-lime-300/[0.08] px-3 py-2 text-[11px] font-bold text-lime-200 transition hover:bg-lime-300/15 disabled:opacity-60"
+              aria-label="Locate me using GPS"
+              className="grid size-10 shrink-0 place-items-center rounded-full border border-lime-300/25 bg-lime-300/[0.08] text-lime-200 transition hover:bg-lime-300/15 disabled:opacity-60"
             >
-              {isLocating ? "Locating…" : "Use My GPS"}
+              <span aria-hidden="true">{isLocating ? "…" : "◎"}</span>
             </button>
           </div>
-
           <form
             className="relative mt-3"
             onSubmit={(event) => {
@@ -447,9 +552,9 @@ export default function ChargerMap({ user }: ChargerMapProps) {
               type="search"
               value={locationSearch}
               onChange={(event) => setLocationSearch(event.currentTarget.value)}
-              placeholder="Search any city, area or landmark"
+              placeholder="Search city, area or landmark"
               autoComplete="off"
-              className="w-full rounded-2xl border border-white/[0.09] bg-black/30 px-4 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-lime-300/50"
+              className="w-full rounded-2xl border border-white/[0.09] bg-black/35 px-4 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-lime-300/50"
             />
             {(isSearching || locationResults.length > 0) && (
               <div className="absolute inset-x-0 top-full z-[1200] mt-2 max-h-56 overflow-auto rounded-2xl border border-white/10 bg-[#14181F] p-1 shadow-2xl">
@@ -476,28 +581,19 @@ export default function ChargerMap({ user }: ChargerMapProps) {
               {locationSearchError}
             </p>
           )}
-          <div className="mt-2 flex items-center justify-between gap-3">
-            <p className="truncate text-[10px] text-zinc-500" title={location.label}>
-              Searching near {location.label}
+          {locationMessage && (
+            <p className="mt-2 text-[10px] leading-4 text-amber-200/80" role="status">
+              {locationMessage}
             </p>
-            {locationMessage && (
-              <p className="text-right text-[10px] text-amber-200/80" role="status">
-                {locationMessage}
-              </p>
-            )}
-          </div>
-
-          <div
-            className="mt-3 flex gap-1.5 overflow-x-auto pb-1"
-            aria-label="Station and connector filters"
-          >
+          )}
+          <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1" aria-label="Station filters">
             {filters.map((option) => (
               <button
                 key={option.value}
                 type="button"
                 onClick={() => setFilter(option.value)}
                 aria-pressed={filter === option.value}
-                className={`shrink-0 rounded-full border px-3 py-2 text-[10px] font-semibold transition ${
+                className={`shrink-0 rounded-full border px-3.5 py-2 text-[10px] font-semibold transition ${
                   filter === option.value
                     ? "border-lime-300/40 bg-lime-300 text-zinc-950"
                     : "border-white/[0.08] bg-white/[0.03] text-zinc-400 hover:border-white/20 hover:text-white"
@@ -509,181 +605,107 @@ export default function ChargerMap({ user }: ChargerMapProps) {
           </div>
         </div>
 
-        <div className="relative min-h-0 flex-1 overflow-hidden">
-          {selectedCharger ? (
-            <BookingPanel
-              key={`${selectedCharger.id}:${user.id}`}
-              charger={selectedCharger}
-              user={user}
-              onClose={() => setSelectedCharger(null)}
-              onConfirmed={confirmBooking}
-            />
-          ) : (
-            <div className="h-full overflow-y-auto p-3">
-              <div className="mb-2 flex items-center justify-between px-1">
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-500">
-                  OpenStreetMap stations
-                </p>
-                <span className="text-[10px] text-zinc-500">
-                  {isLoading ? "Refreshing…" : `${filteredChargers.length} nearby`}
-                </span>
-              </div>
-
-              {isLoading && (
-                <div className="space-y-2 p-1" aria-live="polite">
-                  <div className="skeleton-line h-24 rounded-2xl" />
-                  <div className="skeleton-line h-24 rounded-2xl" />
-                </div>
-              )}
-              {errorMessage && (
-                <p className="m-1 rounded-2xl border border-rose-300/20 bg-rose-300/[0.06] p-3 text-xs text-rose-200" role="alert">
-                  {errorMessage}
-                </p>
-              )}
-              {!isLoading &&
-                !errorMessage &&
-                filteredChargers.map((charger) => {
-                const isNearest = charger.id === filteredChargers[0]?.id;
-                  return (
-                    <button
-                      key={charger.id}
-                      type="button"
-                      onClick={() => setSelectedCharger(charger)}
-                      className="charger-card group mb-2 w-full rounded-2xl border border-white/[0.07] bg-white/[0.025] p-3.5 text-left transition hover:border-lime-300/35 hover:bg-lime-300/[0.04]"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <p className="max-w-full truncate text-sm font-bold text-white">
-                              {charger.title}
-                            </p>
-                            {isNearest && (
-                              <span className="rounded-full bg-lime-300/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-lime-200">
-                                Nearest
-                              </span>
-                            )}
-                          </div>
-                          <p className="mt-1 text-[10px] text-zinc-500">
-                            {charger.stationType === "FUEL"
-                              ? "Fuel / EV stop"
-                              : charger.connectorType.replace("_", " ")}
-                            {" · "}
-                            {charger.distanceKm.toFixed(1)} km away
-                          </p>
-                        </div>
-                        <span className="shrink-0 rounded-lg bg-lime-300/10 px-2 py-1.5 text-[10px] font-extrabold text-lime-200">
-                          {charger.powerKw} kW est.
-                        </span>
-                      </div>
-                      <div className="mt-3 flex items-center justify-between">
-                        <span className="text-xs font-bold text-zinc-100">
-                          {inrFormatter.format(charger.pricePerHour)}
-                          <span className="ml-1 text-[10px] font-medium text-zinc-500">
-                            / hr est.
+        <div className="min-h-0 flex-1 overflow-y-auto p-3">
+          <div className="mb-2 flex items-center justify-between px-1">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-500">
+              Nearest stations
+            </p>
+            <span className="text-[10px] text-zinc-500">
+              {isLoading ? "Refreshing…" : `${filteredChargers.length} found`}
+            </span>
+          </div>
+          {isLoading && (
+            <div className="space-y-2 p-1" aria-live="polite">
+              <div className="skeleton-line h-24 rounded-2xl" />
+              <div className="skeleton-line h-24 rounded-2xl" />
+            </div>
+          )}
+          {errorMessage && (
+            <p className="m-1 rounded-2xl border border-rose-300/20 bg-rose-300/[0.06] p-3 text-xs text-rose-200" role="alert">
+              {errorMessage}
+            </p>
+          )}
+          {!isLoading &&
+            !errorMessage &&
+            filteredChargers.map((charger, index) => {
+              const isSelected = selectedCharger?.id === charger.id;
+              return (
+                <button
+                  key={charger.id}
+                  type="button"
+                  onClick={() => setSelectedCharger(charger)}
+                  aria-pressed={isSelected}
+                  className={`charger-card group mb-2 w-full rounded-2xl border p-3.5 text-left transition ${
+                    isSelected
+                      ? "border-lime-300/60 bg-lime-300/[0.07] shadow-[0_0_24px_rgba(30,215,96,0.08)]"
+                      : "border-white/[0.07] bg-white/[0.025] hover:border-lime-300/35 hover:bg-lime-300/[0.04]"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <p className="max-w-full truncate text-sm font-bold text-white">
+                          {charger.title}
+                        </p>
+                        {index === 0 && (
+                          <span className="rounded-full bg-lime-300/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-lime-200">
+                            #1 Nearest
                           </span>
-                        </span>
-                        <span className="text-[10px] font-bold text-zinc-500 transition group-hover:text-lime-200">
-                          BOOK STATION →
-                        </span>
+                        )}
                       </div>
-                    </button>
-                  );
-                })}
-              {!isLoading &&
-                !errorMessage &&
-                filteredChargers.length === 0 && (
-                  <div className="m-1 rounded-2xl border border-dashed border-white/10 p-5 text-center">
-                    <p className="text-sm font-semibold text-zinc-300">
-                      No nearby stations found
-                    </p>
-                    <p className="mt-1 text-xs text-zinc-500">
-                      Search another location or refresh your GPS.
-                    </p>
+                      <p className="mt-1 text-[10px] text-zinc-500">
+                        {charger.distanceKm.toFixed(1)} km away ·{" "}
+                        {charger.stationType === "FUEL"
+                          ? "Fuel / EV stop"
+                          : charger.connectorType.replace("_", " ")}
+                      </p>
+                    </div>
+                    <span className="shrink-0 rounded-lg bg-lime-300/10 px-2 py-1.5 text-[10px] font-extrabold text-lime-200">
+                      {charger.powerKw} kW
+                    </span>
                   </div>
-                )}
+                  <div className="mt-3 flex items-center justify-between">
+                    <span className="text-xs font-bold text-zinc-100">
+                      {inrFormatter.format(charger.pricePerHour)}
+                      <span className="ml-1 text-[10px] font-medium text-zinc-500">/ hr est.</span>
+                    </span>
+                    <span className="text-[10px] font-bold text-zinc-500 transition group-hover:text-lime-200">
+                      {isSelected ? "SELECTED" : "SELECT →"}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          {!isLoading && !errorMessage && filteredChargers.length === 0 && (
+            <div className="m-1 rounded-2xl border border-dashed border-white/10 p-5 text-center">
+              <p className="text-sm font-semibold text-zinc-300">No nearby stations found</p>
+              <p className="mt-1 text-xs text-zinc-500">
+                Search another location or use GPS to refresh.
+              </p>
             </div>
           )}
         </div>
         <div className="border-t border-white/[0.07] px-4 py-2.5 text-[9px] text-zinc-600">
-          Locations from OpenStreetMap · rates and power are estimates
+          OpenStreetMap data · rates and power are estimates
         </div>
       </aside>
 
-      <section
-        aria-label="Global station map"
-        className="relative min-h-0 flex-1 bg-[#0B0D10] p-2 md:p-3"
-      >
-        <div className="relative h-full overflow-hidden rounded-[24px] border border-white/[0.07]">
-          <MapContainer
-            center={[fallbackLocation.lat, fallbackLocation.lng]}
-            zoom={13}
-            scrollWheelZoom
-            className="h-full w-full"
-            aria-label="Interactive OpenStreetMap with nearby stations"
-          >
-            <TileLayer
-              attribution="&copy; OpenStreetMap contributors"
-              url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            <MapFocus charger={selectedCharger} location={location} />
-            <Marker position={[location.lat, location.lng]} icon={evIcon}>
-              <Popup>
-                <strong>Your EV location</strong>
-                <br />
-                {location.label}
-              </Popup>
-            </Marker>
-            {filteredChargers.map((charger) => (
-              <Marker
-                key={charger.id}
-                position={[charger.approxLat, charger.approxLng]}
-                icon={
-                  selectedCharger?.id === charger.id
-                    ? selectedChargerIcon
-                    : chargerIcon
-                }
-                eventHandlers={{
-                  click: () => setSelectedCharger(charger),
-                }}
-              >
-                <Popup>
-                  <div className="min-w-40 space-y-1">
-                    <p className="font-bold text-white">{charger.title}</p>
-                    <p>
-                      {charger.stationType === "FUEL"
-                        ? "Fuel / EV stop · estimated specs"
-                        : `${charger.powerKw} kW · estimated rate`}
-                    </p>
-                    <p className="font-semibold text-white">
-                      {inrFormatter.format(charger.pricePerHour)} / hour
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedCharger(charger)}
-                      className="mt-1 w-full rounded-lg bg-[#1ED760] px-3 py-2 text-xs font-extrabold text-zinc-950 hover:bg-[#A3FF12]"
-                    >
-                      Book station
-                    </button>
-                  </div>
-                </Popup>
-              </Marker>
-            ))}
-          </MapContainer>
-          <div className="map-location-legend">
-            <span className="map-legend-dot map-legend-charger" />
-            Station
-            <span className="map-legend-dot map-legend-ev" />
-            Your location
-          </div>
-          {activePass && (
-            <ActivePassCard
-              key={activePass.booking.id}
-              activePass={activePass}
-              onClose={() => setActivePass(null)}
-            />
-          )}
-        </div>
-      </section>
+      {selectedCharger && (
+        <BookingPanel
+          key={`${selectedCharger.id}:${user.id}`}
+          charger={selectedCharger}
+          user={user}
+          onClose={() => setSelectedCharger(null)}
+          onConfirmed={confirmBooking}
+        />
+      )}
+      {activePass && !selectedCharger && (
+        <ActivePassCard
+          key={activePass.booking.id}
+          activePass={activePass}
+          onClose={() => setActivePass(null)}
+        />
+      )}
     </div>
   );
 }
