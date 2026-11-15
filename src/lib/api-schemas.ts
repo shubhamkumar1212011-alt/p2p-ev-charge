@@ -38,6 +38,42 @@ export const chargerVerifyRequestSchema = z.object({
   unlockPin: z.string().regex(/^\d{6}$/, "PIN must contain six digits."),
 });
 
+export const bookingReservationResponseSchema = z.object({
+  id: z.string(),
+  startTime: z.iso.datetime(),
+  endTime: z.iso.datetime(),
+  totalAmount: z.number().nonnegative(),
+  status: z.literal("PENDING"),
+  charger: z.object({ title: z.string() }),
+});
+
+export const paymentOrderRequestSchema = z.object({
+  bookingId: z.string().min(1).max(100),
+});
+
+export const paymentOrderResponseSchema = z.object({
+  bookingId: z.string(),
+  orderId: z.string(),
+  keyId: z.string(),
+  amount: z.number().int().positive(),
+  currency: z.literal("INR"),
+});
+
+export const paymentVerificationRequestSchema = z.object({
+  bookingId: z.string().min(1).max(100),
+  razorpay_order_id: z.string().min(1).max(100),
+  razorpay_payment_id: z.string().min(1).max(100),
+  razorpay_signature: z.string().regex(/^[a-fA-F0-9]{64}$/),
+});
+
+export const sandboxConfirmationRequestSchema = z.object({
+  bookingId: z.string().min(1).max(100),
+});
+
+export const sandboxAvailabilityResponseSchema = z.object({
+  enabled: z.boolean(),
+});
+
 export const authUserSchema = z.object({
   id: z.string(),
   name: z.string(),

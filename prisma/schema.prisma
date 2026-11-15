@@ -66,6 +66,7 @@ model Booking {
   status      BookingStatus @default(PENDING)
   unlockPin   String?
   paymentId   String?       @unique
+  razorpayOrderId String?   @unique
   createdAt   DateTime      @default(now())
   driver      User          @relation("DriverBookings", fields: [driverId], references: [id], onDelete: Cascade)
   charger     Charger       @relation(fields: [chargerId], references: [id], onDelete: Cascade)

@@ -1,9 +1,13 @@
-import { randomInt } from "node:crypto";
 import { BookingStatus, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth";
-import { confirmedBookingResponseSchema, bookingRequestSchema } from "@/lib/api-schemas";
+import {
+  bookingRequestSchema,
+  bookingReservationResponseSchema,
+} from "@/lib/api-schemas";
 import { parseJsonBody } from "@/lib/parse-json-body";
+
+const pendingReservationLifetimeMs = 15 * 60 * 1000;
 
 export async function POST(request: Request) {
   const parsed = await parseJsonBody(request, bookingRequestSchema);
@@ -33,6 +37,7 @@ export async function POST(request: Request) {
       );
     }
 
+    const pendingCreatedAfter = new Date(Date.now() - pendingReservationLifetimeMs);
     const result = await prisma.$transaction(
       async (transaction) => {
         const charger = await transaction.charger.findUnique({
@@ -47,9 +52,17 @@ export async function POST(request: Request) {
         const overlappingBooking = await transaction.booking.findFirst({
           where: {
             chargerId: charger.id,
-            status: {
-              in: [BookingStatus.CONFIRMED, BookingStatus.ACTIVE],
-            },
+            OR: [
+              {
+                status: {
+                  in: [BookingStatus.CONFIRMED, BookingStatus.ACTIVE],
+                },
+              },
+              {
+                status: BookingStatus.PENDING,
+                createdAt: { gte: pendingCreatedAfter },
+              },
+            ],
             startTime: { lt: endTime },
             endTime: { gt: startTime },
           },
@@ -68,7 +81,6 @@ export async function POST(request: Request) {
           throw new Error("Charger pricing produced an invalid booking total.");
         }
 
-        const unlockPin = randomInt(0, 1_000_000).toString().padStart(6, "0");
         const booking = await transaction.booking.create({
           data: {
             driverId: user.id,
@@ -76,8 +88,7 @@ export async function POST(request: Request) {
             startTime,
             endTime,
             totalAmount,
-            status: BookingStatus.CONFIRMED,
-            unlockPin,
+            status: BookingStatus.PENDING,
           },
           select: {
             id: true,
@@ -85,29 +96,19 @@ export async function POST(request: Request) {
             endTime: true,
             totalAmount: true,
             status: true,
-            unlockPin: true,
             charger: { select: { title: true } },
           },
         });
 
-        const chargerAddress = await transaction.charger.findUniqueOrThrow({
-          where: { id: charger.id },
-          select: { exactAddress: true },
-        });
-
         return {
-          kind: "confirmed" as const,
+          kind: "pending" as const,
           booking: {
             id: booking.id,
             startTime: booking.startTime.toISOString(),
             endTime: booking.endTime.toISOString(),
             totalAmount: booking.totalAmount,
             status: booking.status,
-            unlockPin: booking.unlockPin,
-            charger: {
-              title: booking.charger.title,
-              exactAddress: chargerAddress.exactAddress,
-            },
+            charger: { title: booking.charger.title },
           },
         };
       },
@@ -127,10 +128,9 @@ export async function POST(request: Request) {
       );
     }
 
-    return Response.json(
-      confirmedBookingResponseSchema.parse(result.booking),
-      { status: 201 },
-    );
+    return Response.json(bookingReservationResponseSchema.parse(result.booking), {
+      status: 201,
+    });
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&

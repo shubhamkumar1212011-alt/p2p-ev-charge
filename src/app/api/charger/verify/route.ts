@@ -1,4 +1,5 @@
 import { BookingStatus } from "@prisma/client";
+import { getAuthenticatedUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { chargerRelayResponseSchema, chargerVerifyRequestSchema } from "@/lib/api-schemas";
 import { parseJsonBody } from "@/lib/parse-json-body";
@@ -8,10 +9,16 @@ export async function POST(request: Request) {
   if (!parsed.ok) return parsed.response;
 
   try {
+    const user = await getAuthenticatedUser();
+    if (!user || user.role !== "DRIVER") {
+      return Response.json({ error: "Unauthorized." }, { status: 401 });
+    }
+
     const now = new Date();
     const booking = await prisma.$transaction(async (transaction) => {
       const activeBooking = await transaction.booking.findFirst({
         where: {
+          driverId: user.id,
           chargerId: parsed.data.chargerId,
           unlockPin: parsed.data.unlockPin,
           status: {

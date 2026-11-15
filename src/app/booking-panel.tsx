@@ -3,7 +3,10 @@
 import { useState } from "react";
 import {
   chargerRelayResponseSchema,
+  bookingReservationResponseSchema,
   confirmedBookingResponseSchema,
+  paymentOrderResponseSchema,
+  sandboxAvailabilityResponseSchema,
   type AuthUser,
   type ConfirmedBooking,
 } from "@/lib/api-schemas";
@@ -17,6 +20,52 @@ type BookingPanelProps = {
 };
 
 type Duration = 1 | 2 | 3;
+
+type RazorpayPaymentDetails = {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+};
+
+type RazorpayCheckoutOptions = {
+  key: string;
+  amount: number;
+  currency: string;
+  name: string;
+  description: string;
+  order_id: string;
+  handler: (payment: RazorpayPaymentDetails) => void;
+  modal: { ondismiss: () => void };
+};
+
+type RazorpayCheckoutInstance = {
+  open: () => void;
+};
+
+declare global {
+  interface Window {
+    Razorpay?: new (options: RazorpayCheckoutOptions) => RazorpayCheckoutInstance;
+  }
+}
+
+let razorpayScriptPromise: Promise<void> | null = null;
+
+function loadRazorpayCheckout() {
+  if (window.Razorpay) return Promise.resolve();
+  if (!razorpayScriptPromise) {
+    razorpayScriptPromise = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve();
+      script.onerror = () => {
+        razorpayScriptPromise = null;
+        reject(new Error("Could not load Razorpay Checkout."));
+      };
+      document.body.append(script);
+    });
+  }
+  return razorpayScriptPromise;
+}
 
 const durationOptions: Duration[] = [1, 2, 3];
 const inrFormatter = new Intl.NumberFormat("en-IN", {
@@ -32,6 +81,8 @@ export default function BookingPanel({
 }: BookingPanelProps) {
   const [duration, setDuration] = useState<Duration>(1);
   const [booking, setBooking] = useState<ConfirmedBooking | null>(null);
+  const [pendingBookingId, setPendingBookingId] = useState<string | null>(null);
+  const [sandboxAvailable, setSandboxAvailable] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [relayMessage, setRelayMessage] = useState<string | null>(null);
   const [relayPowered, setRelayPowered] = useState(false);
@@ -45,25 +96,144 @@ export default function BookingPanel({
     setRelayMessage(null);
 
     try {
-      const start = new Date();
-      const end = new Date(start.getTime() + duration * 60 * 60 * 1000);
-      const response = await fetch("/api/bookings", {
+      let bookingId = pendingBookingId;
+      if (!bookingId) {
+        const start = new Date();
+        const end = new Date(start.getTime() + duration * 60 * 60 * 1000);
+        const reservationResponse = await fetch("/api/bookings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chargerId: charger.id,
+            startTime: start.toISOString(),
+            endTime: end.toISOString(),
+          }),
+        });
+        const reservation = await parseApiResponse(
+          reservationResponse,
+          bookingReservationResponseSchema,
+        );
+        bookingId = reservation.id;
+        setPendingBookingId(bookingId);
+      }
+
+      const orderResponse = await fetch("/api/payments/order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chargerId: charger.id,
-          startTime: start.toISOString(),
-          endTime: end.toISOString(),
-        }),
+        body: JSON.stringify({ bookingId }),
+      });
+      if (orderResponse.status === 503) {
+        const sandboxResponse = await fetch("/api/payments/sandbox", {
+          cache: "no-store",
+        });
+        const sandboxStatus = await parseApiResponse(
+          sandboxResponse,
+          sandboxAvailabilityResponseSchema,
+        );
+        if (sandboxStatus.enabled) {
+          setSandboxAvailable(true);
+          return;
+        }
+      }
+      const order = await parseApiResponse(
+        orderResponse,
+        paymentOrderResponseSchema,
+      );
+      await loadRazorpayCheckout();
+      const RazorpayCheckout = window.Razorpay;
+      if (!RazorpayCheckout) {
+        throw new Error("Razorpay Checkout is unavailable.");
+      }
+
+      const confirmedBooking = await new Promise<ConfirmedBooking>(
+        (resolve, reject) => {
+          let settled = false;
+          const checkout = new RazorpayCheckout({
+            key: order.keyId,
+            amount: order.amount,
+            currency: order.currency,
+            name: "ChargeShare Bengaluru",
+            description: `${charger.title} · ${duration} hour session`,
+            order_id: order.orderId,
+            handler: (payment) => {
+              if (settled) return;
+              settled = true;
+              void (async () => {
+                try {
+                  const verificationResponse = await fetch(
+                    "/api/payments/verify",
+                    {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        bookingId,
+                        ...payment,
+                      }),
+                    },
+                  );
+                  resolve(
+                    await parseApiResponse(
+                      verificationResponse,
+                      confirmedBookingResponseSchema,
+                    ),
+                  );
+                } catch (error) {
+                  reject(error);
+                }
+              })();
+            },
+            modal: {
+              ondismiss: () => {
+                if (settled) return;
+                settled = true;
+                reject(
+                  new Error(
+                    "Payment was cancelled. You can retry within 15 minutes.",
+                  ),
+                );
+              },
+            },
+          });
+          checkout.open();
+        },
+      );
+      setBooking(confirmedBooking);
+      setPendingBookingId(null);
+      setSandboxAvailable(false);
+    } catch (error) {
+      setBookingError(
+        error instanceof Error ? error.message : "Unable to create booking.",
+      );
+    } finally {
+      setIsBooking(false);
+    }
+  }
+
+  async function simulateSandboxPayment() {
+    if (!pendingBookingId) return;
+
+    setIsBooking(true);
+    setBookingError(null);
+    setRelayMessage(null);
+
+    try {
+      const response = await fetch("/api/payments/sandbox", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookingId: pendingBookingId }),
       });
       const result = await parseApiResponse(
         response,
         confirmedBookingResponseSchema,
       );
       setBooking(result);
+      setPendingBookingId(null);
+      setSandboxAvailable(false);
     } catch (error) {
       setBookingError(
-        error instanceof Error ? error.message : "Unable to create booking.",
+        error instanceof Error
+          ? error.message
+          : "Unable to confirm the sandbox booking.",
       );
     } finally {
       setIsBooking(false);
@@ -166,6 +336,7 @@ export default function BookingPanel({
                     type="button"
                     onClick={() => setDuration(option)}
                     aria-pressed={duration === option}
+                    disabled={Boolean(pendingBookingId)}
                     className={`rounded-xl border px-3 py-3 text-sm font-bold transition ${
                       duration === option
                         ? "border-lime-300/70 bg-lime-300/10 text-lime-200 shadow-[inset_0_0_20px_rgba(163,255,18,0.06)]"
@@ -198,24 +369,39 @@ export default function BookingPanel({
               </p>
             )}
 
-            <button
-              type="button"
-              onClick={bookSlot}
-              disabled={!user || user.role !== "DRIVER" || isBooking}
-              className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-[#1ED760] px-5 py-4 text-sm font-extrabold text-zinc-950 shadow-[0_8px_36px_rgba(30,215,96,0.2)] transition hover:bg-[#A3FF12] hover:shadow-[0_8px_44px_rgba(163,255,18,0.24)] disabled:cursor-not-allowed disabled:opacity-45"
-            >
-              <svg
-                aria-hidden="true"
-                viewBox="0 0 20 20"
-                className="size-4"
-                fill="currentColor"
+            {sandboxAvailable ? (
+              <button
+                type="button"
+                onClick={simulateSandboxPayment}
+                disabled={!user || user.role !== "DRIVER" || isBooking}
+                className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-[#1ED760] px-5 py-4 text-sm font-extrabold text-zinc-950 shadow-[0_8px_36px_rgba(30,215,96,0.2)] transition hover:bg-[#A3FF12] hover:shadow-[0_8px_44px_rgba(163,255,18,0.24)] disabled:cursor-not-allowed disabled:opacity-45"
               >
-                <path d="M11.16 1.7 4.7 10.1a.75.75 0 0 0 .6 1.2h4.02l-.48 6.99a.25.25 0 0 0 .45.17l6.03-8.8a.75.75 0 0 0-.62-1.17h-3.89l.8-6.57a.25.25 0 0 0-.45-.2Z" />
-              </svg>
-              {isBooking
-                ? "Locking your charge…"
-                : `Instant Book & Pay · ${inrFormatter.format(estimatedTotal)}`}
-            </button>
+                {isBooking
+                  ? "Confirming sandbox booking…"
+                  : "Simulate Test Payment (Sandbox Mode)"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={bookSlot}
+                disabled={!user || user.role !== "DRIVER" || isBooking}
+                className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-[#1ED760] px-5 py-4 text-sm font-extrabold text-zinc-950 shadow-[0_8px_36px_rgba(30,215,96,0.2)] transition hover:bg-[#A3FF12] hover:shadow-[0_8px_44px_rgba(163,255,18,0.24)] disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 20 20"
+                  className="size-4"
+                  fill="currentColor"
+                >
+                  <path d="M11.16 1.7 4.7 10.1a.75.75 0 0 0 .6 1.2h4.02l-.48 6.99a.25.25 0 0 0 .45.17l6.03-8.8a.75.75 0 0 0-.62-1.17h-3.89l.8-6.57a.25.25 0 0 0-.45-.2Z" />
+                </svg>
+                {isBooking
+                  ? "Opening secure checkout…"
+                  : pendingBookingId
+                    ? `Retry Razorpay payment · ${inrFormatter.format(estimatedTotal)}`
+                    : `Instant Book & Pay · ${inrFormatter.format(estimatedTotal)}`}
+              </button>
+            )}
             {!user && (
               <p className="mt-3 text-center text-xs text-zinc-500">
                 Log in from the top bar to book this charger.
@@ -227,7 +413,9 @@ export default function BookingPanel({
               </p>
             )}
             <p className="mt-4 text-center text-[11px] text-zinc-600">
-              Test payment simulation · no real charge will be made
+              {sandboxAvailable
+                ? "Local-only sandbox simulation · no payment is processed"
+                : "Secure payment via Razorpay test mode"}
             </p>
           </>
         ) : (
