@@ -19,6 +19,11 @@ enum ConnectorType {
   CHADEMO
 }
 
+enum StationType {
+  CHARGING
+  FUEL
+}
+
 enum BookingStatus {
   PENDING
   CONFIRMED
@@ -46,6 +51,7 @@ model Charger {
   approxLat     Float
   approxLng     Float
   connectorType ConnectorType
+  stationType   StationType  @default(CHARGING)
   powerKw       Float
   pricePerHour  Float
   isAvailable   Boolean       @default(true)

@@ -100,7 +100,7 @@ export default function AuthPanel({ onAuthenticated }: AuthPanelProps) {
           </svg>
         </div>
         <p className="mb-2 text-[10px] font-extrabold uppercase tracking-[0.23em] text-lime-300">
-          ChargeShare Bengaluru
+          ChargeShare Global
         </p>
         <h1
           id="gateway-title"
@@ -109,7 +109,7 @@ export default function AuthPanel({ onAuthenticated }: AuthPanelProps) {
           Power Your Drive
         </h1>
         <p className="mx-auto mt-2 max-w-[330px] text-sm leading-6 text-zinc-400">
-          Peer-to-peer neighborhood EV charging across Bengaluru.
+          Find nearby EV energy stops across India and around the world.
         </p>
       </div>
 

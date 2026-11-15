@@ -1,99 +1,85 @@
-import { PrismaClient, ConnectorType, Role } from "@prisma/client";
+import { PrismaClient, Role } from "@prisma/client";
 
 const prisma = new PrismaClient();
-
-const sampleChargers = [
-  {
-    hostName: "Indiranagar Home Host",
-    hostEmail: "host.indiranagar@example.com",
-    title: "Home charger in Indiranagar",
-    exactAddress: "Demo home, 12th Main Road, Indiranagar, Bengaluru 560038",
-    approxLat: 12.9717,
-    approxLng: 77.6412,
-    connectorType: ConnectorType.TYPE_2,
-    powerKw: 7.4,
-    pricePerHour: 120,
-  },
-  {
-    hostName: "Koramangala Home Host",
-    hostEmail: "host.koramangala@example.com",
-    title: "Home charger in Koramangala",
-    exactAddress: "Demo home, 5th Block, Koramangala, Bengaluru 560095",
-    approxLat: 12.9345,
-    approxLng: 77.6156,
-    connectorType: ConnectorType.CCS2,
-    powerKw: 11,
-    pricePerHour: 150,
-  },
-  {
-    hostName: "Jayanagar Home Host",
-    hostEmail: "host.jayanagar@example.com",
-    title: "Home charger in Jayanagar",
-    exactAddress: "Demo home, 4th Block, Jayanagar, Bengaluru 560011",
-    approxLat: 12.925,
-    approxLng: 77.5838,
-    connectorType: ConnectorType.TYPE_2,
-    powerKw: 7.2,
-    pricePerHour: 100,
-  },
-  {
-    hostName: "Whitefield Home Host",
-    hostEmail: "host.whitefield@example.com",
-    title: "Home charger in Whitefield",
-    exactAddress: "Demo home, near Hope Farm, Whitefield, Bengaluru 560066",
-    approxLat: 12.9698,
-    approxLng: 77.75,
-    connectorType: ConnectorType.CCS2,
-    powerKw: 22,
-    pricePerHour: 180,
-  },
+const legacySampleChargerIds = [
+  "sample-host.indiranagar",
+  "sample-host.koramangala",
+  "sample-host.jayanagar",
+  "sample-host.whitefield",
 ];
+const legacySampleHostEmails = [
+  "host.indiranagar@example.com",
+  "host.koramangala@example.com",
+  "host.jayanagar@example.com",
+  "host.whitefield@example.com",
+];
+const discoveryHost = {
+  name: "OpenStreetMap Station Directory",
+  email: "osm-station-directory@chargeshare.local",
+};
 
 async function main() {
-  for (const sample of sampleChargers) {
-    const host = await prisma.user.upsert({
-      where: { email: sample.hostEmail },
-      update: { name: sample.hostName, role: Role.HOST },
-      create: {
-        name: sample.hostName,
-        email: sample.hostEmail,
-        role: Role.HOST,
-      },
-    });
+  const now = new Date();
+  const demoDrivers = await prisma.user.findMany({
+    where: {
+      name: "Demo Driver",
+      email: { endsWith: "@example.test" },
+      role: Role.DRIVER,
+    },
+    select: { id: true },
+  });
+  const demoDriverIds = demoDrivers.map((driver) => driver.id);
 
-    await prisma.charger.upsert({
-      where: { id: `sample-${sample.hostEmail.split("@")[0]}` },
-      update: {
-        hostId: host.id,
-        title: sample.title,
-        exactAddress: sample.exactAddress,
-        approxLat: sample.approxLat,
-        approxLng: sample.approxLng,
-        connectorType: sample.connectorType,
-        powerKw: sample.powerKw,
-        pricePerHour: sample.pricePerHour,
-        isAvailable: true,
-      },
-      create: {
-        id: `sample-${sample.hostEmail.split("@")[0]}`,
-        hostId: host.id,
-        title: sample.title,
-        exactAddress: sample.exactAddress,
-        approxLat: sample.approxLat,
-        approxLng: sample.approxLng,
-        connectorType: sample.connectorType,
-        powerKw: sample.powerKw,
-        pricePerHour: sample.pricePerHour,
+  if (demoDriverIds.length > 0) {
+    await prisma.booking.deleteMany({
+      where: {
+        driverId: { in: demoDriverIds },
+        chargerId: { in: legacySampleChargerIds },
+        status: { in: ["PENDING", "CONFIRMED", "ACTIVE"] },
       },
     });
   }
 
-  console.log(`Seeded ${sampleChargers.length} sample home chargers in Bengaluru.`);
+  await prisma.booking.deleteMany({
+    where: {
+      chargerId: { in: legacySampleChargerIds },
+      endTime: { lt: now },
+      status: { in: ["PENDING", "CONFIRMED", "ACTIVE"] },
+    },
+  });
+
+  await prisma.charger.deleteMany({
+    where: {
+      id: { in: legacySampleChargerIds },
+      bookings: { none: {} },
+    },
+  });
+  await prisma.user.deleteMany({
+    where: {
+      OR: [
+        { email: { in: legacySampleHostEmails } },
+        { id: { in: demoDriverIds } },
+      ],
+      hostedChargers: { none: {} },
+      bookings: { none: {} },
+    },
+  });
+
+  await prisma.user.upsert({
+    where: { email: discoveryHost.email },
+    update: { name: discoveryHost.name, role: Role.HOST },
+    create: {
+      ...discoveryHost,
+      role: Role.HOST,
+    },
+  });
+
+  console.log("Prepared the OpenStreetMap station directory and removed stale sample bookings.");
 }
 
 main()
   .catch((error: unknown) => {
-    console.error("Failed to seed sample chargers:", error);
+    console.error("Failed to prepare station discovery:", error);
     process.exitCode = 1;
   })
   .finally(async () => {

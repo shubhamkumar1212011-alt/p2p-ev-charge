@@ -420,6 +420,10 @@ body {
   animation: drawer-up 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
+.station-booking-panel {
+  animation: station-slide-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
 @keyframes marker-pulse {
   0% {
     transform: scale(0.5);
@@ -474,6 +478,17 @@ body {
   }
   to {
     transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes station-slide-in {
+  from {
+    transform: translateX(18px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
     opacity: 1;
   }
 }

@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ChargeShare Bengaluru",
-  description: "Find and share home EV chargers in Bengaluru.",
+  title: "ChargeShare | Global Station Finder",
+  description: "Find nearby EV charging stations and fuel stops anywhere.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
