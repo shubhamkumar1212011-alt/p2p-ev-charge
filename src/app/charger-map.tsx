@@ -331,8 +331,8 @@ export default function ChargerMap({ user }: ChargerMapProps) {
               aria-label="Interactive map of available EV chargers in Bengaluru"
             >
               <TileLayer
-                attribution="&copy; OpenStreetMap contributors &copy; CARTO"
-                url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                attribution="&copy; OpenStreetMap contributors"
+                url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
               <MapFocus charger={selectedCharger} />
 
