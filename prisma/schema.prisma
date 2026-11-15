@@ -1,0 +1,73 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  DRIVER
+  HOST
+}
+
+enum ConnectorType {
+  TYPE_2
+  CCS2
+  TYPE_1
+  CHADEMO
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+model User {
+  id             String    @id @default(cuid())
+  name           String
+  email          String    @unique
+  role           Role      @default(DRIVER)
+  createdAt      DateTime  @default(now())
+  hostedChargers Charger[] @relation("HostChargers")
+  bookings       Booking[] @relation("DriverBookings")
+}
+
+model Charger {
+  id            String        @id @default(cuid())
+  hostId        String
+  title         String
+  exactAddress  String
+  approxLat     Float
+  approxLng     Float
+  connectorType ConnectorType
+  powerKw       Float
+  pricePerHour  Float
+  isAvailable   Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  host          User          @relation("HostChargers", fields: [hostId], references: [id], onDelete: Cascade)
+  bookings      Booking[]
+
+  @@index([hostId])
+}
+
+model Booking {
+  id          String        @id @default(cuid())
+  driverId    String
+  chargerId   String
+  startTime   DateTime
+  endTime     DateTime
+  totalAmount Float
+  status      BookingStatus @default(PENDING)
+  unlockPin   String?
+  paymentId   String?       @unique
+  createdAt   DateTime      @default(now())
+  driver      User          @relation("DriverBookings", fields: [driverId], references: [id], onDelete: Cascade)
+  charger     Charger       @relation(fields: [chargerId], references: [id], onDelete: Cascade)
+
+  @@index([driverId])
+  @@index([chargerId, startTime, endTime])
+}
