@@ -22,7 +22,7 @@ export async function POST(request: Request) {
         name: parsed.data.name,
         email: parsed.data.email,
         passwordHash,
-        role: "DRIVER",
+        role: parsed.data.role,
       },
       select: { id: true, name: true, email: true, role: true },
     });

@@ -501,3 +501,100 @@ body {
     transform-origin: center;
   }
 }
+
+.login-gateway {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 45%, rgb(30 215 96 / 5%), transparent 48%),
+    #0b0d10;
+}
+
+.gateway-grid {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background-image:
+    linear-gradient(rgb(255 255 255 / 3.2%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 3.2%) 1px, transparent 1px);
+  background-size: 46px 46px;
+  mask-image: radial-gradient(ellipse at center, #000 8%, transparent 82%);
+  pointer-events: none;
+}
+
+.gateway-glow {
+  position: absolute;
+  z-index: 0;
+  width: min(58vw, 560px);
+  aspect-ratio: 1;
+  border-radius: 9999px;
+  filter: blur(115px);
+  opacity: 0.13;
+  pointer-events: none;
+}
+
+.gateway-glow-top {
+  top: -25%;
+  left: 8%;
+  background: #1ed760;
+}
+
+.gateway-glow-bottom {
+  right: 3%;
+  bottom: -34%;
+  background: #a3ff12;
+  opacity: 0.1;
+}
+
+.auth-gateway-card {
+  overflow: hidden;
+  animation: gateway-card-enter 560ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+}
+
+.gateway-brand-badge {
+  box-shadow:
+    0 0 24px rgb(30 215 96 / 20%),
+    0 0 68px rgb(163 255 18 / 10%),
+    inset 0 0 18px rgb(163 255 18 / 8%);
+}
+
+.gateway-input:focus {
+  box-shadow: 0 0 0 3px rgb(30 215 96 / 9%);
+}
+
+.gateway-submit:hover {
+  transform: translateY(-1px);
+}
+
+.gateway-loading-mark {
+  box-shadow: 0 0 25px rgb(30 215 96 / 25%);
+  animation: ev-glow 2.4s ease-in-out infinite;
+}
+
+.dashboard-enter {
+  animation: dashboard-enter 420ms ease-out both;
+}
+
+@keyframes gateway-card-enter {
+  from {
+    transform: translateY(18px) scale(0.985);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes dashboard-enter {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}

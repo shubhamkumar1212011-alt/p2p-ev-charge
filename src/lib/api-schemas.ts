@@ -13,6 +13,7 @@ export const registerRequestSchema = z.object({
   name: z.string().trim().min(1).max(80),
   email: emailSchema,
   password: passwordSchema,
+  role: z.enum(["DRIVER", "HOST"]).default("DRIVER"),
 });
 
 export const loginRequestSchema = z.object({
