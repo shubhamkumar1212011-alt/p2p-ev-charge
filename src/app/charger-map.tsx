@@ -10,6 +10,7 @@ import {
   useMap,
 } from "react-leaflet";
 import BookingPanel from "./booking-panel";
+import HostChargerModal from "./host-charger-modal";
 import type { ConfirmedBooking, AuthUser } from "@/lib/api-schemas";
 import {
   geocodeResultsSchema,
@@ -249,6 +250,7 @@ export default function ChargerMap({
     null,
   );
   const [isSearching, setIsSearching] = useState(false);
+  const [hostModalOpen, setHostModalOpen] = useState(false);
   const manualLocationSelected = useRef(false);
 
   const requestGps = useCallback((force = true) => {
@@ -689,6 +691,26 @@ export default function ChargerMap({
           OpenStreetMap data · rates and power are estimates
         </div>
       </aside>
+
+      <button
+        type="button"
+        onClick={() => setHostModalOpen(true)}
+        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[1100] inline-flex items-center gap-2 rounded-full bg-[#1ED760] px-5 py-3 text-xs font-extrabold text-zinc-950 shadow-[0_12px_36px_rgba(30,215,96,0.35)] hover:bg-[#A3FF12] transition cursor-pointer"
+      >
+        + List Your Charger
+      </button>
+
+      <HostChargerModal
+        isOpen={hostModalOpen}
+        onClose={() => setHostModalOpen(false)}
+        defaultLat={location.lat}
+        defaultLng={location.lng}
+        onCreated={(newCharger) => {
+          setChargers((prev) => [newCharger, ...prev]);
+          setSelectedCharger(newCharger);
+          setLocation({ lat: newCharger.approxLat, lng: newCharger.approxLng, label: newCharger.title });
+        }}
+      />
 
       {selectedCharger && (
         <BookingPanel

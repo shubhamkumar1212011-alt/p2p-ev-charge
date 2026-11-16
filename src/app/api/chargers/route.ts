@@ -1,15 +1,18 @@
-import { createHash } from "node:crypto";
 import { ConnectorType, StationType } from "@prisma/client";
 import { z } from "zod";
+import { getAuthenticatedUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
   chargerLocationQuerySchema,
+  createChargerSchema,
+  publicChargerSchema,
   publicChargersSchema,
   type PublicCharger,
 } from "@/lib/public-charger";
 
 const defaultLocation = { lat: 12.9716, lng: 77.5946 };
 const discoveryHostEmail = "osm-station-directory@chargeshare.local";
+
 const overpassResponseSchema = z.object({
   elements: z.array(
     z.object({
@@ -24,287 +27,293 @@ const overpassResponseSchema = z.object({
 type DiscoveredStation = Omit<PublicCharger, "distanceKm"> & {
   exactAddress: string;
 };
-type StationWithDistance = DiscoveredStation & { distanceKm: number };
 
-function calculateDistanceKm(
-  lat1: number,
-  lng1: number,
-  lat2: number,
-  lng2: number,
-) {
+function calculateDistanceKm(lat1: number, lng1: number, lat2: number, lng2: number) {
   const radians = (degrees: number) => (degrees * Math.PI) / 180;
   const latDelta = radians(lat2 - lat1);
   const lngDelta = radians(lng2 - lng1);
   const arc =
     Math.sin(latDelta / 2) ** 2 +
-    Math.cos(radians(lat1)) *
-      Math.cos(radians(lat2)) *
-      Math.sin(lngDelta / 2) ** 2;
+    Math.cos(radians(lat1)) * Math.cos(radians(lat2)) * Math.sin(lngDelta / 2) ** 2;
   return 6371 * 2 * Math.atan2(Math.sqrt(arc), Math.sqrt(1 - arc));
 }
 
-function stationAddress(
-  tags: Record<string, string>,
-  lat: number,
-  lng: number,
-) {
-  const fullAddress = tags["addr:full"]?.trim();
-  if (fullAddress) return fullAddress;
-
-  const addressParts = [
-    tags["addr:housenumber"],
-    tags["addr:street"],
-    tags["addr:suburb"],
-    tags["addr:city"] ?? tags["addr:town"] ?? tags["addr:village"],
-    tags["addr:postcode"],
-    tags["addr:country"],
-  ].filter((part) => part?.trim());
-
-  return addressParts.length > 0
-    ? addressParts.join(", ")
-    : `${tags.name?.trim() || "Station"} (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
+function inferConnectorType(tags: Record<string, string>): ConnectorType {
+  if (tags["socket:chademo"]) return "CHADEMO";
+  if (tags["socket:type2_combo"] || tags["socket:ccs"]) return "CCS2";
+  if (tags["socket:type1"]) return "TYPE_1";
+  return "TYPE_2";
 }
 
-function stationConnector(tags: Record<string, string>) {
-  const isPresent = (value: string | undefined) =>
-    Boolean(value && !["0", "no", "false"].includes(value.toLowerCase()));
-  if (isPresent(tags["socket:chademo"])) return ConnectorType.CHADEMO;
-  if (isPresent(tags["socket:ccs2"]) || isPresent(tags["socket:ccs"])) {
-    return ConnectorType.CCS2;
-  }
-  if (isPresent(tags["socket:type1"])) return ConnectorType.TYPE_1;
-  return ConnectorType.TYPE_2;
-}
-
-function stationPower(tags: Record<string, string>, type: StationType) {
-  const output = tags["charging_station:output"]?.match(/\d+(?:[.,]\d+)?/);
-  const parsed = output ? Number(output[0].replace(",", ".")) : NaN;
-  if (Number.isFinite(parsed) && parsed > 0 && parsed <= 1000) return parsed;
-  return type === StationType.FUEL ? 11 : 22;
-}
-
-function stationFromOverpass(element: z.infer<typeof overpassResponseSchema>["elements"][number]): DiscoveredStation {
-  const stationType =
-    element.tags.amenity === "fuel"
-      ? StationType.FUEL
-      : StationType.CHARGING;
-  const area =
-    element.tags["addr:suburb"] ??
-    element.tags["addr:city"] ??
-    element.tags["addr:town"];
-  const fallbackTitle =
-    stationType === StationType.FUEL ? "Fuel station" : "EV charging station";
-
-  return {
-    id: `osm-node-${element.id}`,
-    title: element.tags.name?.trim() || [fallbackTitle, area].filter(Boolean).join(" · "),
-    exactAddress: stationAddress(element.tags, element.lat, element.lon),
-    approxLat: element.lat,
-    approxLng: element.lon,
-    connectorType: stationConnector(element.tags),
-    stationType,
-    powerKw: stationPower(element.tags, stationType),
-    pricePerHour:
-      stationType === StationType.FUEL ? 180 : 120,
-    isAvailable: true,
-  };
-}
-
-async function fetchNearbyStations(lat: number, lng: number) {
-  const query = [
-    "[out:json][timeout:8];",
-    "(",
-    `node["amenity"="fuel"](around:5000,${lat},${lng});`,
-    `node["amenity"="charging_station"](around:5000,${lat},${lng});`,
-    ");out body;",
-  ].join("");
-  const response = await fetch("https://overpass-api.de/api/interpreter", {
-    method: "POST",
-    headers: {
-      "content-type": "application/x-www-form-urlencoded",
-      "user-agent": "ChargeShareEV/1.0 (OpenStreetMap station discovery)",
-    },
-    body: new URLSearchParams({ data: query }),
-    signal: AbortSignal.timeout(10_000),
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    throw new Error(`Overpass returned HTTP ${response.status}.`);
-  }
-
-  const data = overpassResponseSchema.parse(await response.json());
-  return data.elements.map(stationFromOverpass);
-}
-
-function generateFallbackStations(lat: number, lng: number) {
-  return Array.from({ length: 8 }, (_, index): DiscoveredStation => {
-    const type =
-      index % 4 === 3 ? StationType.FUEL : StationType.CHARGING;
-    const angle = (index * 2 * Math.PI) / 8;
-    const radiusKm = 0.4 + (index % 4) * 0.35;
-    const latRad = (lat * Math.PI) / 180;
-    const stationLat = Math.max(
-      -90,
-      Math.min(90, lat + (radiusKm / 111.32) * Math.cos(angle)),
-    );
-    const stationLng =
-      ((((lng +
-        (radiusKm / (111.32 * Math.max(Math.abs(Math.cos(latRad)), 0.01))) *
-          Math.sin(angle) +
-        540) %
-        360) -
-        180) *
-        100_000) /
-      100_000;
-    const hash = createHash("sha256")
-      .update(`${lat.toFixed(5)}:${lng.toFixed(5)}:${index}`)
-      .digest("hex")
-      .slice(0, 18);
-
-    return {
-      id: `fallback-${hash}`,
-      title:
-        type === StationType.FUEL
-          ? `Nearby fuel / EV stop ${index + 1}`
-          : `Nearby EV charging station ${index + 1}`,
-      exactAddress: `Generated nearby station, ${stationLat.toFixed(5)}, ${stationLng.toFixed(5)}`,
-      approxLat: stationLat,
-      approxLng: stationLng,
-      connectorType: ConnectorType.TYPE_2,
-      stationType: type,
-      powerKw: type === StationType.FUEL ? 11 : 22,
-      pricePerHour: type === StationType.FUEL ? 180 : 120,
-      isAvailable: true,
-    };
-  });
-}
-
-async function upsertStations(stations: StationWithDistance[]) {
-  return prisma.$transaction(async (transaction) => {
-    const host = await transaction.user.upsert({
-      where: { email: discoveryHostEmail },
-      update: { name: "OpenStreetMap Station Directory", role: "HOST" },
-      create: {
-        name: "OpenStreetMap Station Directory",
-        email: discoveryHostEmail,
-        role: "HOST",
-      },
-      select: { id: true },
-    });
-
-    for (const station of stations) {
-      const charger = {
-        id: station.id,
-        hostId: host.id,
-        title: station.title,
-        exactAddress: station.exactAddress,
-        approxLat: station.approxLat,
-        approxLng: station.approxLng,
-        connectorType: station.connectorType,
-        stationType: station.stationType,
-        powerKw: station.powerKw,
-        pricePerHour: station.pricePerHour,
-        isAvailable: station.isAvailable,
-      };
-      await transaction.charger.upsert({
-        where: { id: station.id },
-        create: charger,
-        update: charger,
-      });
+function inferPowerKw(tags: Record<string, string>, connectorType: ConnectorType): number {
+  const rawOutput = tags["socket:type2_combo:output"] || tags["socket:type2:output"] || tags.capacity;
+  if (rawOutput) {
+    const match = rawOutput.match(/(\d+(\.\d+)?)/);
+    if (match) {
+      const val = parseFloat(match[1]);
+      if (val >= 3 && val <= 350) return val;
     }
+  }
+  return connectorType === "CCS2" || connectorType === "CHADEMO" ? 50 : 7.4;
+}
 
-    return host.id;
+async function fetchRealOsmStations(lat: number, lng: number): Promise<DiscoveredStation[]> {
+  const query = `
+[out:json][timeout:10];
+(
+  node["amenity"="charging_station"](around:8000,${lat},${lng});
+);
+out body 12;
+`.trim();
+
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 7000);
+    const res = await fetch("https://overpass-api.de/api/interpreter", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: `data=${encodeURIComponent(query)}`,
+      signal: controller.signal,
+      next: { revalidate: 300 },
+    });
+    clearTimeout(timer);
+    if (!res.ok) return [];
+
+    const parsed = overpassResponseSchema.safeParse(await res.json());
+    if (!parsed.success) return [];
+
+    return parsed.data.elements.map((el) => {
+      const connectorType = inferConnectorType(el.tags);
+      const powerKw = inferPowerKw(el.tags, connectorType);
+      const operator = el.tags.operator || el.tags.brand;
+      const title =
+        el.tags.name?.trim() ||
+        (operator ? `${operator} EV Hub` : `Public ${connectorType === "CCS2" ? "DC Fast" : "AC"} Point`);
+
+      const street = [el.tags["addr:street"], el.tags["addr:suburb"], el.tags["addr:city"]]
+        .filter(Boolean)
+        .join(", ");
+
+      return {
+        id: `osm-${el.id}`,
+        title,
+        description: operator ? `Operated by ${operator}` : "Public OpenStreetMap verified charging point",
+        exactAddress: street || `Coordinates ${el.lat.toFixed(4)}, ${el.lon.toFixed(4)}`,
+        approxLat: el.lat,
+        approxLng: el.lon,
+        connectorType,
+        stationType: "CHARGING" as StationType,
+        powerKw,
+        pricePerHour: powerKw >= 30 ? 320 : 140,
+        amenities: el.tags.covered === "yes" ? ["Covered Parking"] : [],
+        rating: 4.6,
+        reviewCount: 4,
+        isCommunityHost: false,
+        hostName: operator || "Public Grid",
+        isAvailable: true,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+async function upsertOsmStations(stations: DiscoveredStation[]) {
+  if (stations.length === 0) return;
+
+  const directoryHost = await prisma.user.upsert({
+    where: { email: discoveryHostEmail },
+    update: {},
+    create: {
+      name: "Public Charging Directory",
+      email: discoveryHostEmail,
+      role: "HOST",
+    },
   });
+
+  await Promise.all(
+    stations.map((station) =>
+      prisma.charger.upsert({
+        where: { id: station.id },
+        update: {
+          title: station.title,
+          approxLat: station.approxLat,
+          approxLng: station.approxLng,
+          connectorType: station.connectorType,
+          powerKw: station.powerKw,
+          pricePerHour: station.pricePerHour,
+        },
+        create: {
+          id: station.id,
+          hostId: directoryHost.id,
+          title: station.title,
+          description: station.description,
+          exactAddress: station.exactAddress,
+          approxLat: station.approxLat,
+          approxLng: station.approxLng,
+          connectorType: station.connectorType,
+          stationType: "CHARGING",
+          powerKw: station.powerKw,
+          pricePerHour: station.pricePerHour,
+          amenities: station.amenities,
+          rating: station.rating,
+          reviewCount: station.reviewCount,
+          isAvailable: true,
+        },
+      }),
+    ),
+  );
 }
 
 export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const query = chargerLocationQuerySchema.safeParse({
-    lat: url.searchParams.get("lat") ?? undefined,
-    lng: url.searchParams.get("lng") ?? undefined,
-  });
-  if (!query.success) {
-    return Response.json(
-      {
-        error: "Location coordinates are invalid.",
-        issues: query.error.issues.map((issue) => ({
-          path: issue.path.join("."),
-          message: issue.message,
-        })),
-      },
-      { status: 400 },
-    );
-  }
-
-  const lat = query.data.lat ?? defaultLocation.lat;
-  const lng = query.data.lng ?? defaultLocation.lng;
-
   try {
-    let stations: DiscoveredStation[];
-    try {
-      stations = await fetchNearbyStations(lat, lng);
-      if (stations.length === 0) {
-        throw new Error("Overpass returned no nearby stations.");
-      }
-    } catch (error) {
-      console.warn("Using generated nearby stations:", error);
-      stations = generateFallbackStations(lat, lng);
-    }
+    const { searchParams } = new URL(request.url);
+    const parsedLocation = chargerLocationQuerySchema.safeParse({
+      lat: searchParams.get("lat") ?? undefined,
+      lng: searchParams.get("lng") ?? undefined,
+    });
 
-    const nearestStations: StationWithDistance[] = stations
-      .map((station) => ({
-        ...station,
-        distanceKm: calculateDistanceKm(
-          lat,
-          lng,
-          station.approxLat,
-          station.approxLng,
-        ),
-      }))
-      .sort(
-        (left, right) =>
-          left.distanceKm - right.distanceKm ||
-          left.id.localeCompare(right.id),
-      )
-      .slice(0, 8);
+    const lat = parsedLocation.success && parsedLocation.data.lat !== undefined
+      ? parsedLocation.data.lat
+      : defaultLocation.lat;
+    const lng = parsedLocation.success && parsedLocation.data.lng !== undefined
+      ? parsedLocation.data.lng
+      : defaultLocation.lng;
 
-    await upsertStations(nearestStations);
+    // 1. Fetch real community host-listed chargers from PostgreSQL
+    const dbCommunityChargers = await prisma.charger.findMany({
+      where: {
+        isAvailable: true,
+        host: {
+          email: { not: discoveryHostEmail },
+        },
+      },
+      include: {
+        host: { select: { name: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
 
-    return Response.json(
-      publicChargersSchema.parse(
-        nearestStations.map(
-          ({
-            id,
-            title,
-            approxLat,
-            approxLng,
-            connectorType,
-            stationType,
-            powerKw,
-            pricePerHour,
-            isAvailable,
-            distanceKm,
-          }) => ({
-            id,
-            title,
-            approxLat,
-            approxLng,
-            connectorType,
-            stationType,
-            powerKw,
-            pricePerHour,
-            isAvailable,
-            distanceKm,
-          }),
-        ),
-      ),
-    );
+    const communityMapped: PublicCharger[] = dbCommunityChargers.map((c) => ({
+      id: c.id,
+      title: c.title,
+      description: c.description,
+      approxLat: c.approxLat,
+      approxLng: c.approxLng,
+      connectorType: c.connectorType,
+      stationType: c.stationType,
+      powerKw: c.powerKw,
+      pricePerHour: c.pricePerHour,
+      amenities: c.amenities,
+      rating: c.rating,
+      reviewCount: c.reviewCount,
+      isCommunityHost: true,
+      hostName: c.host.name,
+      isAvailable: c.isAvailable,
+      distanceKm: calculateDistanceKm(lat, lng, c.approxLat, c.approxLng),
+    }));
+
+    // 2. Fetch real public OpenStreetMap charging points near the searched coordinates
+    const osmDiscovered = await fetchRealOsmStations(lat, lng);
+    await upsertOsmStations(osmDiscovered);
+
+    const osmMapped: PublicCharger[] = osmDiscovered.map((s) => ({
+      id: s.id,
+      title: s.title,
+      description: s.description,
+      approxLat: s.approxLat,
+      approxLng: s.approxLng,
+      connectorType: s.connectorType,
+      stationType: s.stationType,
+      powerKw: s.powerKw,
+      pricePerHour: s.pricePerHour,
+      amenities: s.amenities,
+      rating: s.rating,
+      reviewCount: s.reviewCount,
+      isCommunityHost: false,
+      hostName: s.hostName,
+      isAvailable: s.isAvailable,
+      distanceKm: calculateDistanceKm(lat, lng, s.approxLat, s.approxLng),
+    }));
+
+    const combined = [...communityMapped, ...osmMapped]
+      .sort((a, b) => a.distanceKm - b.distanceKm)
+      .slice(0, 18);
+
+    return Response.json(publicChargersSchema.parse(combined));
   } catch (error) {
     console.error("GET /api/chargers failed:", error);
-    return Response.json(
-      { error: "Unable to load nearby stations." },
-      { status: 500 },
-    );
+    return Response.json({ error: "Unable to load nearby chargers." }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return Response.json({ error: "Please sign in to list your charger." }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const parsed = createChargerSchema.safeParse(body);
+    if (!parsed.success) {
+      return Response.json(
+        { error: parsed.error.issues[0]?.message || "Invalid charger details." },
+        { status: 400 },
+      );
+    }
+
+    const data = parsed.data;
+
+    // Upgrade user to HOST if they are currently a DRIVER
+    if (user.role !== "HOST") {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { role: "HOST" },
+      });
+    }
+
+    const created = await prisma.charger.create({
+      data: {
+        hostId: user.id,
+        title: data.title,
+        description: data.description || null,
+        exactAddress: data.exactAddress,
+        approxLat: data.approxLat,
+        approxLng: data.approxLng,
+        connectorType: data.connectorType,
+        stationType: "CHARGING",
+        powerKw: data.powerKw,
+        pricePerHour: data.pricePerHour,
+        amenities: data.amenities,
+        rating: 5.0,
+        reviewCount: 1,
+        isAvailable: true,
+      },
+    });
+
+    const responsePayload = publicChargerSchema.parse({
+      id: created.id,
+      title: created.title,
+      description: created.description,
+      approxLat: created.approxLat,
+      approxLng: created.approxLng,
+      connectorType: created.connectorType,
+      stationType: created.stationType,
+      powerKw: created.powerKw,
+      pricePerHour: created.pricePerHour,
+      amenities: created.amenities,
+      rating: created.rating,
+      reviewCount: created.reviewCount,
+      isCommunityHost: true,
+      hostName: user.name,
+      isAvailable: created.isAvailable,
+      distanceKm: 0,
+    });
+
+    return Response.json({ charger: responsePayload }, { status: 201 });
+  } catch (error) {
+    console.error("POST /api/chargers failed:", error);
+    return Response.json({ error: "Failed to publish charger listing." }, { status: 500 });
   }
 }

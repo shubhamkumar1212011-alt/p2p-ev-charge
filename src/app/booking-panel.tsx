@@ -11,6 +11,7 @@ import {
 } from "@/lib/api-schemas";
 import { parseApiResponse } from "@/lib/api-client";
 import type { PublicCharger } from "@/lib/public-charger";
+import NearbyChillPanel from "./nearby-chill-panel";
 
 type BookingPanelProps = {
   charger: PublicCharger;
@@ -433,6 +434,7 @@ export default function BookingPanel({
             </button>
           ))}
         </div>
+        <NearbyChillPanel charger={charger} />
         <div className="mt-3 flex items-end justify-between border-t border-white/10 pt-3">
           <div>
             <p className="text-[10px] text-zinc-500">
@@ -466,7 +468,7 @@ export default function BookingPanel({
         <button
           type="button"
           onClick={bookSlot}
-          disabled={user.role !== "DRIVER" || isBooking}
+          disabled={isBooking}
           className="mt-4 flex w-full items-center justify-center rounded-full bg-[#1ED760] px-4 py-3.5 text-sm font-extrabold text-zinc-950 shadow-[0_8px_30px_rgba(30,215,96,0.18)] transition hover:bg-[#A3FF12] disabled:cursor-not-allowed disabled:opacity-45"
         >
           {isBooking
@@ -474,7 +476,7 @@ export default function BookingPanel({
             : `Proceed to Pay · ${inrFormatter.format(serverTotal ?? estimatedTotal)}`}
         </button>
       )}
-      {user.role === "HOST" && (
+      {false && (
         <p className="mt-2 text-center text-[10px] text-zinc-500">
           Host accounts can’t create driver bookings.
         </p>

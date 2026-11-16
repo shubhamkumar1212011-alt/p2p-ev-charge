@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
-import AuthPanel from "./auth-panel";
+import LandingShowcase from "./landing-showcase";
 import {
   authSessionResponseSchema,
   logoutResponseSchema,
@@ -90,24 +90,10 @@ export default function Home() {
 
   if (!user) {
     return (
-      <main className="login-gateway min-h-svh bg-[#0B0D10] px-4 py-10 text-white sm:px-6">
-        <div aria-hidden="true" className="gateway-grid" />
-        <div aria-hidden="true" className="gateway-glow gateway-glow-top" />
-        <div aria-hidden="true" className="gateway-glow gateway-glow-bottom" />
-        <div className="relative z-10 flex min-h-[calc(100svh-5rem)] flex-col items-center justify-center">
-          <AuthPanel onAuthenticated={setUser} />
-          <div className="mt-5 min-h-5 text-center">
-            {sessionError && (
-              <p className="text-xs text-zinc-500" role="status">
-                {sessionError}
-              </p>
-            )}
-          </div>
-          <p className="mt-2 text-[10px] font-medium uppercase tracking-[0.17em] text-zinc-700">
-            Local energy. Longer adventures.
-          </p>
-        </div>
-      </main>
+      <LandingShowcase
+        onAuthenticated={setUser}
+        sessionError={sessionError}
+      />
     );
   }
 

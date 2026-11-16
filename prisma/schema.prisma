@@ -47,13 +47,17 @@ model Charger {
   id            String        @id @default(cuid())
   hostId        String
   title         String
+  description   String?
   exactAddress  String
   approxLat     Float
   approxLng     Float
   connectorType ConnectorType
-  stationType   StationType  @default(CHARGING)
+  stationType   StationType   @default(CHARGING)
   powerKw       Float
   pricePerHour  Float
+  amenities     String[]      @default([])
+  rating        Float         @default(4.8)
+  reviewCount   Int           @default(1)
   isAvailable   Boolean       @default(true)
   createdAt     DateTime      @default(now())
   host          User          @relation("HostChargers", fields: [hostId], references: [id], onDelete: Cascade)
@@ -63,19 +67,19 @@ model Charger {
 }
 
 model Booking {
-  id          String        @id @default(cuid())
-  driverId    String
-  chargerId   String
-  startTime   DateTime
-  endTime     DateTime
-  totalAmount Float
-  status      BookingStatus @default(PENDING)
-  unlockPin   String?
-  paymentId   String?       @unique
-  razorpayOrderId String?   @unique
-  createdAt   DateTime      @default(now())
-  driver      User          @relation("DriverBookings", fields: [driverId], references: [id], onDelete: Cascade)
-  charger     Charger       @relation(fields: [chargerId], references: [id], onDelete: Cascade)
+  id              String        @id @default(cuid())
+  driverId        String
+  chargerId       String
+  startTime       DateTime
+  endTime         DateTime
+  totalAmount     Float
+  status          BookingStatus @default(PENDING)
+  unlockPin       String?
+  paymentId       String?       @unique
+  razorpayOrderId String?       @unique
+  createdAt       DateTime      @default(now())
+  driver          User          @relation("DriverBookings", fields: [driverId], references: [id], onDelete: Cascade)
+  charger         Charger       @relation(fields: [chargerId], references: [id], onDelete: Cascade)
 
   @@index([driverId])
   @@index([chargerId, startTime, endTime])
