@@ -1,20 +1,9 @@
 "use client";
 
-import { useRef } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
-import { Float, MeshDistortMaterial, Sparkles, Torus } from "@react-three/drei";
-import { motion, useScroll, useTransform } from "framer-motion";
-import type * as THREE from "three";
-import {
-  Zap,
-  Coffee,
-  ShieldCheck,
-  MapPin,
-  ArrowDownRight,
-  PlugZap,
-  Sparkles as SparklesIcon,
-} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import AuthPanel from "./auth-panel";
+import SupportChatbot from "@/components/support-chatbot";
+import { createHeroScene, createGlobeScene } from "@/lib/chargeshare-scenes";
 import type { AuthUser } from "@/lib/api-schemas";
 
 type LandingShowcaseProps = {
@@ -22,227 +11,268 @@ type LandingShowcaseProps = {
   sessionError: string | null;
 };
 
-function ChargingCoreMesh({ scrollProgressRef }: { scrollProgressRef: React.MutableRefObject<number> }) {
-  const groupRef = useRef<THREE.Group>(null);
-  const outerRingRef = useRef<THREE.Mesh>(null);
-  const innerRingRef = useRef<THREE.Mesh>(null);
+const PHOTO_CARDS = [
+  {
+    src: "/images/host-driveway.jpg",
+    tag: "Verified Home Hosts",
+    title: "Private driveways & gated society bays",
+    desc: "Book a dedicated 7.4 kW Type 2 wallbox with zero public-queue waiting and 6-digit relay PIN access.",
+    fallbackBg: "from-[#0b2447] to-[#17407c]",
+  },
+  {
+    src: "/images/cafe-chill.jpg",
+    tag: "Charge & Chill",
+    title: "Real cafes & restrooms within 450m",
+    desc: "Every station pin surfaces live walking-distance coffee shops, eateries, and washrooms via OpenStreetMap.",
+    fallbackBg: "from-[#0f3d3e] to-[#196f63]",
+  },
+  {
+    src: "/images/connector-guide.jpg",
+    tag: "Host & Earn",
+    title: "Turn idle parking into passive income",
+    desc: "Set your own ₹/kWh rate, publish availability windows, and collect Razorpay-settled payouts.",
+    fallbackBg: "from-[#1e293b] to-[#0f172a]",
+  },
+];
 
-  useFrame((state, delta) => {
-    const t = state.clock.getElapsedTime();
-    const scroll = scrollProgressRef.current;
-
-    if (groupRef.current) {
-      groupRef.current.rotation.y = t * 0.35 + scroll * Math.PI * 2;
-      groupRef.current.rotation.x = Math.sin(t * 0.4) * 0.18 + scroll * 0.65;
-      const targetScale = 1 + Math.sin(scroll * Math.PI) * 0.22;
-      groupRef.current.scale.lerp({ x: targetScale, y: targetScale, z: targetScale } as THREE.Vector3, delta * 5);
-    }
-    if (outerRingRef.current) {
-      outerRingRef.current.rotation.z += delta * 0.5;
-    }
-    if (innerRingRef.current) {
-      innerRingRef.current.rotation.x -= delta * 0.75;
-    }
-  });
+function PhotoCard({ card }: { card: (typeof PHOTO_CARDS)[number] }) {
+  const [imgError, setImgError] = useState(false);
 
   return (
-    <group ref={groupRef}>
-      <Float speed={2.2} rotationIntensity={0.35} floatIntensity={0.6}>
-        {/* High-voltage emerald plasma core */}
-        <mesh>
-          <icosahedronGeometry args={[1.15, 4]} />
-          <MeshDistortMaterial
-            color="#1ED760"
-            emissive="#0f9d44"
-            emissiveIntensity={0.65}
-            roughness={0.18}
-            metalness={0.85}
-            distort={0.28}
-            speed={2.4}
+    <article className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs transition hover:-translate-y-0.5 hover:shadow-md">
+      <div className={`relative h-52 w-full overflow-hidden bg-gradient-to-br ${card.fallbackBg}`}>
+        {!imgError ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={card.src}
+            alt={card.title}
+            onError={() => setImgError(true)}
+            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
           />
-        </mesh>
-
-        {/* Outer induction stator ring */}
-        <Torus ref={outerRingRef} args={[1.95, 0.045, 24, 100]} rotation={[Math.PI / 3, 0.2, 0]}>
-          <meshStandardMaterial color="#A3FF12" emissive="#A3FF12" emissiveIntensity={0.8} roughness={0.2} />
-        </Torus>
-
-        {/* Inner phase ring */}
-        <Torus ref={innerRingRef} args={[1.55, 0.03, 20, 80]} rotation={[-Math.PI / 4, 0.5, 0]}>
-          <meshStandardMaterial color="#38bdf8" emissive="#0284c7" emissiveIntensity={0.7} roughness={0.25} />
-        </Torus>
-      </Float>
-
-      <Sparkles count={70} scale={5.5} size={2.2} speed={0.45} color="#A3FF12" />
-    </group>
+        ) : (
+          <div className="flex h-full flex-col justify-between p-5 text-white">
+            <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-[11px] font-semibold backdrop-blur-xs">
+              ⚡ {card.tag}
+            </span>
+            <p className="text-xs text-sky-100/90">
+              Drop your photo at <code className="rounded bg-black/30 px-1.5 py-0.5 text-[11px]">public{card.src}</code>
+            </p>
+          </div>
+        )}
+      </div>
+      <div className="p-5">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-[#12965f]">{card.tag}</span>
+        <h3 className="mt-1 text-lg font-bold text-slate-900">{card.title}</h3>
+        <p className="mt-2 text-sm leading-relaxed text-slate-600">{card.desc}</p>
+      </div>
+    </article>
   );
 }
 
 export default function LandingShowcase({ onAuthenticated, sessionError }: LandingShowcaseProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const scrollProgressRef = useRef(0);
+  const heroCanvasRef = useRef<HTMLCanvasElement>(null);
+  const globeCanvasRef = useRef<HTMLCanvasElement>(null);
+  const authSectionRef = useRef<HTMLDivElement>(null);
+  const [cityQuery, setCityQuery] = useState("");
 
-  const { scrollYProgress } = useScroll({ target: containerRef });
-  scrollYProgress.on("change", (latest) => {
-    scrollProgressRef.current = latest;
-  });
+  useEffect(() => {
+    if (!heroCanvasRef.current) return;
+    const cleanup = createHeroScene(heroCanvasRef.current);
+    return () => cleanup?.();
+  }, []);
 
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.35], [1, 0.15]);
-  const heroY = useTransform(scrollYProgress, [0, 0.35], [0, -60]);
+  useEffect(() => {
+    if (!globeCanvasRef.current) return;
+    const cleanup = createGlobeScene(globeCanvasRef.current);
+    return () => cleanup?.();
+  }, []);
 
-  function scrollToPortal() {
-    document.getElementById("access-portal")?.scrollIntoView({ behavior: "smooth" });
-  }
+  const scrollToAuth = (prefill?: string) => {
+    if (prefill) setCityQuery(prefill);
+    authSectionRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   return (
-    <div ref={containerRef} className="relative min-h-screen bg-[#07090C] text-white selection:bg-[#1ED760] selection:text-zinc-950 overflow-x-hidden">
-      {/* Persistent 3D Interactive Canvas */}
-      <div className="pointer-events-none fixed inset-0 z-0 opacity-85">
-        <Canvas camera={{ position: [0, 0, 5.4], fov: 45 }} dpr={[1, 2]}>
-          <ambientLight intensity={0.45} />
-          <pointLight position={[6, 6, 6]} intensity={2.4} color="#1ED760" />
-          <pointLight position={[-6, -4, 4]} intensity={1.6} color="#38bdf8" />
-          <ChargingCoreMesh scrollProgressRef={scrollProgressRef} />
-        </Canvas>
+    <div className="min-h-screen bg-[#f6f8fb] text-slate-900">
+      {/* Top announcement bar */}
+      <div className="bg-[#071a36] text-sky-100 text-xs border-b border-white/10">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-2">
+          <span>⚡ India&apos;s peer-to-peer EV charging network · Live map &amp; PIN relay</span>
+          <div className="hidden sm:flex items-center gap-5">
+            <button type="button" onClick={() => scrollToAuth()} className="hover:text-white">
+              List your charger
+            </button>
+            <button type="button" onClick={() => scrollToAuth()} className="hover:text-white">
+              Sign in / Map
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Subtle radial vignette */}
-      <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_center,transparent_15%,#07090C_82%)]" />
-
-      {/* Sticky Top Navigation */}
-      <header className="sticky top-0 z-40 border-b border-white/[0.06] bg-[#07090C]/75 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
+      {/* Main navigation */}
+      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/95 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5">
           <div className="flex items-center gap-2.5">
-            <span className="grid size-9 place-items-center rounded-xl bg-[#1ED760] text-zinc-950 shadow-[0_0_25px_rgba(30,215,96,0.4)]">
-              <Zap className="h-5 w-5 fill-zinc-950" />
-            </span>
-            <div>
-              <span className="text-base font-extrabold tracking-tight text-white">ChargeShare</span>
-              <span className="ml-2 rounded-full border border-[#1ED760]/30 bg-[#1ED760]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#A3FF12]">
-                P2P Grid
-              </span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#19c37d] text-[#0b2447] font-black shadow-xs">
+              ⚡
             </div>
+            <span className="text-xl font-extrabold tracking-tight text-[#0b2447]">
+              Charge<span className="text-[#19c37d]">Share</span>
+            </span>
           </div>
-
-          <div className="flex items-center gap-3">
+          <nav className="flex items-center gap-3 sm:gap-6 text-sm font-semibold text-slate-700">
+            <a href="#stations" className="hidden md:inline hover:text-[#0b2447]">
+              How it works
+            </a>
+            <a href="#network" className="hidden md:inline hover:text-[#0b2447]">
+              Corridors
+            </a>
             <button
               type="button"
-              onClick={scrollToPortal}
-              className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-xs font-semibold text-zinc-200 hover:border-[#1ED760]/50 hover:text-white transition cursor-pointer"
+              onClick={() => scrollToAuth()}
+              className="rounded-full bg-[#0b2447] px-4 py-2 text-xs sm:text-sm font-bold text-white hover:bg-[#14376b] transition"
             >
-              List Your Charger
+              Open Live Map →
             </button>
-            <button
-              type="button"
-              onClick={scrollToPortal}
-              className="inline-flex items-center gap-1.5 rounded-full bg-[#1ED760] px-4 py-2 text-xs font-extrabold text-zinc-950 hover:bg-[#A3FF12] transition cursor-pointer"
-            >
-              Open Live Map <ArrowDownRight className="h-3.5 w-3.5" />
-            </button>
-          </div>
+          </nav>
         </div>
       </header>
 
-      {/* Section 1: Scroll-Reactive Hero */}
-      <motion.section
-        style={{ opacity: heroOpacity, y: heroY }}
-        className="relative z-10 mx-auto flex min-h-[88vh] max-w-6xl flex-col justify-center px-5 py-20"
+      {/* Navy Hero + 3D EV Car & Charger Canvas */}
+      <section
+        className="relative overflow-hidden text-white"
+        style={{ background: "radial-gradient(1100px 560px at 75% 30%, #17407c 0%, #0b2447 55%, #071a36 100%)" }}
       >
+        <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-8 px-4 py-12 lg:grid-cols-12 lg:py-16">
+          <div className="lg:col-span-6">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-1 text-xs font-semibold text-sky-100">
+              <span className="h-2 w-2 rounded-full bg-[#19c37d]" /> Verified P2P Wallboxes &amp; Rapid Hubs
+            </span>
+            <h1 className="mt-4 text-4xl font-extrabold tracking-tight sm:text-5xl leading-[1.12]">
+              Find &amp; share <span className="text-[#19c37d]">EV chargers</span> in your neighborhood.
+            </h1>
+            <p className="mt-4 max-w-xl text-base sm:text-lg text-sky-100/90 leading-relaxed">
+              Skip crowded highway queues. Book a verified residential or workplace charger nearby, unlock with a 6-digit relay PIN, and relax at cafes within walking distance.
+            </p>
+
+            {/* Pill Search Bar */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                scrollToAuth();
+              }}
+              className="mt-7 flex max-w-lg items-center gap-2 rounded-full bg-white p-1.5 shadow-2xl"
+            >
+              <input
+                type="text"
+                value={cityQuery}
+                onChange={(e) => setCityQuery(e.target.value)}
+                placeholder="Search Bengaluru, JP Nagar, Jaipur, Pune..."
+                className="flex-1 bg-transparent px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none"
+              />
+              <button
+                type="submit"
+                className="rounded-full bg-[#19c37d] px-5 py-2.5 text-sm font-extrabold text-[#0b2447] hover:bg-[#15ab6d] transition"
+              >
+                Find Chargers
+              </button>
+            </form>
+
+            {/* Quick City Pills */}
+            <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
+              <span className="text-sky-200/80">Popular hubs:</span>
+              {["Bengaluru · Indiranagar", "Bengaluru · JP Nagar", "Jaipur · Vaishali Nagar", "Pune · Baner"].map((spot) => (
+                <button
+                  key={spot}
+                  type="button"
+                  onClick={() => scrollToAuth(spot)}
+                  className="rounded-full border border-white/25 px-3 py-1 text-sky-100 hover:bg-white/15 transition"
+                >
+                  {spot}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Interactive 3D EV Car + Charging Post */}
+          <div className="relative h-[380px] sm:h-[460px] lg:col-span-6 rounded-3xl border border-white/15 bg-[#071a36]/50 shadow-2xl">
+            <canvas ref={heroCanvasRef} className="block h-full w-full rounded-3xl" />
+            <div className="pointer-events-none absolute top-4 left-4 rounded-xl border border-white/20 bg-white/10 px-3.5 py-2 text-xs backdrop-blur-md">
+              <span className="text-sky-200">Live Telemetry</span>
+              <b className="block text-sm text-white">7.4 kW · Type 2 AC</b>
+            </div>
+            <div className="pointer-events-none absolute bottom-4 right-4 rounded-xl border border-white/20 bg-white/10 px-3.5 py-2 text-xs backdrop-blur-md">
+              <span className="text-sky-200">Interactive 3D</span>
+              <b className="block text-sm text-[#19c37d]">Drag to rotate vehicle</b>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Editorial Photo Gallery Section (Custom Image Slots) */}
+      <section id="stations" className="mx-auto max-w-6xl px-4 py-16">
         <div className="max-w-2xl">
-          <div className="inline-flex items-center gap-2 rounded-full border border-[#1ED760]/30 bg-[#1ED760]/10 px-3.5 py-1.5 text-xs font-semibold text-[#A3FF12] mb-6">
-            <SparklesIcon className="h-3.5 w-3.5" /> Peer-to-Peer EV Charging &amp; Verified Hospitality
-          </div>
-
-          <h1 className="text-4xl sm:text-6xl font-black tracking-tight leading-[1.06] text-white">
-            Charge your EV anywhere.{" "}
-            <span className="bg-gradient-to-r from-[#1ED760] via-[#A3FF12] to-sky-400 bg-clip-text text-transparent">
-              Chill while you power up.
-            </span>
-          </h1>
-
-          <p className="mt-6 text-base sm:text-lg leading-relaxed text-zinc-300 max-w-xl">
-            Book verified home, apartment, and cafe chargers in real time—complete with live walking discovery for specialty coffee, dining, and clean restrooms within 450 meters.
+          <p className="text-xs font-extrabold uppercase tracking-widest text-[#12965f]">Built for Indian EV Drivers</p>
+          <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900">
+            Real chargers, real hosts, zero guesswork
+          </h2>
+          <p className="mt-2 text-sm sm:text-base text-slate-600">
+            Every listing displays exact kW output, connector schematic, verified host utilities, and live OpenStreetMap cafes nearby.
           </p>
-
-          <div className="mt-8 flex flex-wrap items-center gap-3.5">
-            <button
-              type="button"
-              onClick={scrollToPortal}
-              className="inline-flex items-center gap-2 rounded-full bg-[#1ED760] px-7 py-3.5 text-sm font-extrabold text-zinc-950 shadow-[0_12px_40px_rgba(30,215,96,0.35)] hover:bg-[#A3FF12] transition cursor-pointer"
-            >
-              <MapPin className="h-4 w-4" /> Explore Live Chargers
-            </button>
-            <button
-              type="button"
-              onClick={scrollToPortal}
-              className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-zinc-900/80 px-6 py-3.5 text-sm font-bold text-white hover:border-[#1ED760]/50 transition cursor-pointer"
-            >
-              <PlugZap className="h-4 w-4 text-[#1ED760]" /> Become a Host
-            </button>
-          </div>
         </div>
-      </motion.section>
 
-      {/* Section 2: Three Core Real-World Pillars */}
-      <section className="relative z-10 mx-auto max-w-6xl px-5 py-16">
-        <div className="grid gap-5 md:grid-cols-3">
-          <div className="rounded-3xl border border-white/10 bg-zinc-950/75 p-6 backdrop-blur-xl">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#1ED760]/15 border border-[#1ED760]/30 text-[#1ED760] mb-4">
-              <PlugZap className="h-5 w-5" />
-            </div>
-            <h2 className="text-lg font-bold text-white">Real Community Chargers</h2>
-            <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-              Homeowners and commercial hosts publish live Type 2 AC &amp; CCS2 DC points with exact kW ratings, hourly tariffs, and verified on-site facilities.
-            </p>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-zinc-950/75 p-6 backdrop-blur-xl">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 mb-4">
-              <Coffee className="h-5 w-5" />
-            </div>
-            <h2 className="text-lg font-bold text-white">Charge &amp; Chill Discovery</h2>
-            <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-              Every station pin queries live geospatial data to surface real cafes, restaurants, and public restrooms within a 5-minute walk.
-            </p>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-zinc-950/75 p-6 backdrop-blur-xl">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-sky-500/15 border border-sky-500/30 text-sky-400 mb-4">
-              <ShieldCheck className="h-5 w-5" />
-            </div>
-            <h2 className="text-lg font-bold text-white">Razorpay Escrow &amp; PIN Unlock</h2>
-            <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-              Exact driveway addresses and your 6-digit smart charger relay unlock PIN are released automatically upon verified payment confirmation.
-            </p>
-          </div>
+        <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-3">
+          {PHOTO_CARDS.map((card) => (
+            <PhotoCard key={card.title} card={card} />
+          ))}
         </div>
       </section>
 
-      {/* Section 3: Direct Authentication & Live Map Entry */}
-      <section id="access-portal" className="relative z-10 mx-auto max-w-6xl px-5 py-20">
-        <div className="grid items-center gap-10 lg:grid-cols-2 rounded-3xl border border-white/10 bg-zinc-950/85 p-6 sm:p-10 backdrop-blur-2xl shadow-2xl">
-          <div>
-            <span className="text-xs font-bold uppercase tracking-widest text-[#A3FF12]">
-              Instant Access
-            </span>
-            <h2 className="mt-2 text-3xl sm:text-4xl font-black text-white">
-              Sign in to enter the live Bengaluru &amp; India EV grid.
+      {/* 3D India Corridor Globe + Sign-in / Live Map Portal */}
+      <section id="network" ref={authSectionRef} className="border-t border-slate-200 bg-white py-16">
+        <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-10 px-4 lg:grid-cols-12">
+          <div className="lg:col-span-6">
+            <p className="text-xs font-extrabold uppercase tracking-widest text-[#12965f]">Growing Across India</p>
+            <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900">
+              Connected charging across major metros
             </h2>
-            <p className="mt-3 text-sm leading-relaxed text-zinc-400">
-              Create an account or log in to discover live community &amp; public chargers, inspect walking-distance cafes and washrooms, book slots, or publish your own charger in under 60 seconds.
+            <p className="mt-3 text-sm sm:text-base text-slate-600 leading-relaxed">
+              Sign in to explore live pins across Bengaluru, Jaipur, Mumbai, Delhi NCR, Hyderabad, and Pune—or publish your own home charger in 60 seconds.
             </p>
+            <div className="relative mt-6 h-[320px] w-full overflow-hidden rounded-3xl bg-[#071a36] shadow-lg">
+              <canvas ref={globeCanvasRef} className="block h-full w-full" />
+              <div className="pointer-events-none absolute bottom-3 left-4 rounded-lg bg-white/10 px-3 py-1.5 text-[11px] text-sky-100 backdrop-blur-xs">
+                Drag globe · Live P2P mesh
+              </div>
+            </div>
           </div>
 
-          <div className="flex flex-col items-center">
-            <AuthPanel onAuthenticated={onAuthenticated} />
-            {sessionError && (
-              <p className="mt-4 text-xs text-zinc-400" role="status">
-                {sessionError}
-              </p>
-            )}
+          <div className="lg:col-span-6">
+            <div className="rounded-3xl border border-slate-200 bg-[#f8fafc] p-6 sm:p-8 shadow-sm">
+              {cityQuery && (
+                <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-xs font-medium text-emerald-900">
+                  Selected area: <b>{cityQuery}</b> — Sign in below to view available chargers on the live map.
+                </div>
+              )}
+              <AuthPanel onAuthenticated={onAuthenticated} />
+            </div>
           </div>
         </div>
       </section>
+
+      {/* Footer */}
+      <footer className="border-t border-slate-200 bg-[#071a36] py-10 text-xs text-sky-200/80">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 sm:flex-row">
+          <div className="flex items-center gap-2 text-white font-bold text-sm">
+            <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-[#19c37d] text-[#0b2447]">⚡</span>
+            ChargeShare
+          </div>
+          <p>© {new Date().getFullYear()} ChargeShare · Peer-to-Peer EV Charging Network</p>
+        </div>
+      </footer>
+
+      {/* Floating Support Chatbot */}
+      <SupportChatbot />
     </div>
   );
 }

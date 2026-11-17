@@ -1,62 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  Coffee,
-  Utensils,
-  Bath,
-  Wifi,
-  ShieldCheck,
-  Car,
-  Armchair,
-  Navigation,
-  Star,
-  Sparkles,
-  Loader2,
-} from "lucide-react";
+import { Coffee, Utensils, Bath, Sparkles, Ticket, Lock, Check, Copy } from "lucide-react";
 import type { PublicCharger } from "@/lib/public-charger";
-import type { NearbyPlace } from "@/app/api/nearby/route";
+import type { NearbyPlace } from "./api/nearby/route";
 
 type NearbyChillPanelProps = {
   charger: PublicCharger;
+  isBooked?: boolean;
 };
 
-function amenityIcon(label: string) {
-  const lower = label.toLowerCase();
-  if (lower.includes("washroom") || lower.includes("restroom")) return <Bath className="h-3.5 w-3.5 text-sky-400" />;
-  if (lower.includes("cafe") || lower.includes("snack")) return <Coffee className="h-3.5 w-3.5 text-amber-400" />;
-  if (lower.includes("covered") || lower.includes("parking")) return <Car className="h-3.5 w-3.5 text-emerald-400" />;
-  if (lower.includes("wi-fi") || lower.includes("wifi")) return <Wifi className="h-3.5 w-3.5 text-indigo-400" />;
-  if (lower.includes("lounge")) return <Armchair className="h-3.5 w-3.5 text-purple-400" />;
-  return <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />;
-}
-
-function categoryBadge(category: NearbyPlace["category"]) {
-  switch (category) {
-    case "CAFE":
-      return {
-        label: "Cafe",
-        icon: <Coffee className="h-3.5 w-3.5 text-amber-400" />,
-        pill: "bg-amber-500/10 text-amber-300 border-amber-500/20",
-      };
-    case "RESTROOM":
-      return {
-        label: "Restroom",
-        icon: <Bath className="h-3.5 w-3.5 text-sky-400" />,
-        pill: "bg-sky-500/10 text-sky-300 border-sky-500/20",
-      };
-    default:
-      return {
-        label: category === "FAST_FOOD" ? "Quick Bite" : "Restaurant",
-        icon: <Utensils className="h-3.5 w-3.5 text-emerald-400" />,
-        pill: "bg-emerald-500/10 text-emerald-300 border-emerald-500/20",
-      };
-  }
-}
-
-export default function NearbyChillPanel({ charger }: NearbyChillPanelProps) {
+export default function NearbyChillPanel({ charger, isBooked = false }: NearbyChillPanelProps) {
   const [places, setPlaces] = useState<NearbyPlace[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -65,8 +22,9 @@ export default function NearbyChillPanel({ charger }: NearbyChillPanelProps) {
 
     fetch(`/api/nearby?lat=${charger.approxLat}&lng=${charger.approxLng}`)
       .then((res) => (res.ok ? res.json() : { places: [] }))
-      .then((data: { places?: NearbyPlace[] }) => {
-        if (active) setPlaces(Array.isArray(data.places) ? data.places : []);
+      .then((data) => {
+        if (!active) return;
+        setPlaces(Array.isArray(data.places) ? data.places : []);
       })
       .catch(() => {
         if (active) setPlaces([]);
@@ -80,110 +38,114 @@ export default function NearbyChillPanel({ charger }: NearbyChillPanelProps) {
     };
   }, [charger.id, charger.approxLat, charger.approxLng]);
 
-  return (
-    <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/80 p-4 space-y-4">
-      {/* Host & Rating Summary */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
-        <div className="flex items-center gap-2">
-          {charger.isCommunityHost ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-semibold text-emerald-300">
-              <Sparkles className="h-3 w-3" /> Verified P2P Host
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1 rounded-full bg-slate-800 border border-slate-700 px-2.5 py-0.5 text-xs font-medium text-slate-300">
-              Public Grid Station
-            </span>
-          )}
-          {charger.hostName && (
-            <span className="text-xs text-slate-400">Hosted by {charger.hostName}</span>
-          )}
-        </div>
+  function copyVoucher(id: string, code: string) {
+    navigator.clipboard?.writeText(code);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  }
 
-        <div className="flex items-center gap-1 text-xs font-semibold text-amber-400">
-          <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-          <span>{charger.rating.toFixed(1)}</span>
-          <span className="text-slate-500 font-normal">({charger.reviewCount})</span>
+  return (
+    <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-3.5">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <Sparkles className="h-3.5 w-3.5 text-[#A3FF12]" />
+          <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-200">
+            Charge &amp; Chill · Within 300m
+          </p>
         </div>
+        <span className="rounded-full bg-[#1ED760]/15 px-2 py-0.5 text-[10px] font-bold text-[#A3FF12]">
+          {isBooked ? "Perks Unlocked" : "Book to Unlock Offers"}
+        </span>
       </div>
 
-      {/* Host Access Notes */}
-      {charger.description && (
-        <p className="text-xs leading-relaxed text-slate-300 bg-slate-950/60 rounded-xl px-3 py-2 border border-slate-800/80">
-          {charger.description}
-        </p>
-      )}
-
-      {/* Host-Verified On-Site Facilities */}
-      {charger.amenities.length > 0 && (
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">
-            On-Site Host Facilities
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {charger.amenities.map((item) => (
-              <span
-                key={item}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700/80 bg-slate-800/80 px-2.5 py-1 text-xs text-slate-200"
-              >
-                {amenityIcon(item)}
-                {item}
-              </span>
-            ))}
-          </div>
+      {/* Host On-Site Amenities */}
+      {Array.isArray(charger.amenities) && charger.amenities.length > 0 && (
+        <div className="mt-2.5 flex flex-wrap gap-1.5">
+          {charger.amenities.map((item) => (
+            <span
+              key={item}
+              className="rounded-full border border-lime-300/25 bg-lime-300/10 px-2.5 py-0.5 text-[10px] font-semibold text-lime-200"
+            >
+              ✓ {item}
+            </span>
+          ))}
         </div>
       )}
 
-      {/* Live Charge & Chill Walking Discovery */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-400">
-            Charge &amp; Chill • Walking Distance (&lt;450m)
-          </p>
-          {loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-400" />}
-        </div>
-
-        {!loading && places.length === 0 ? (
-          <p className="text-xs text-slate-400">
-            No mapped cafes or restrooms within 450m on OpenStreetMap for this pin.
+      {/* 300m Cafes, Dining & Restrooms */}
+      <div className="mt-3 space-y-2">
+        {loading ? (
+          <p className="text-[11px] text-zinc-400">Scanning cafes &amp; restrooms within 300m...</p>
+        ) : places.length === 0 ? (
+          <p className="text-[11px] text-zinc-500">
+            No public cafes mapped within 300m—check host on-site utilities above.
           </p>
         ) : (
-          <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-            {places.map((place) => {
-              const badge = categoryBadge(place.category);
-              return (
-                <div
-                  key={place.id}
-                  className="flex items-center justify-between gap-2 rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2"
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold ${badge.pill}`}
-                      >
-                        {badge.icon}
-                        {badge.label}
-                      </span>
-                      <p className="truncate text-xs font-medium text-slate-100">{place.name}</p>
-                    </div>
-                    <p className="mt-0.5 text-[11px] text-slate-400">
-                      {place.distanceMeters}m • {place.walkMinutes} min walk
-                      {place.cuisine ? ` • ${place.cuisine}` : ""}
-                    </p>
-                  </div>
+          places.map((place) => {
+            const Icon =
+              place.category === "RESTROOM"
+                ? Bath
+                : place.category === "RESTAURANT"
+                ? Utensils
+                : Coffee;
 
-                  <a
-                    href={place.mapsUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="shrink-0 inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-800/90 px-2 py-1 text-[11px] font-medium text-slate-200 hover:border-emerald-500/50 hover:text-emerald-300 transition"
-                  >
-                    <Navigation className="h-3 w-3" />
-                    Walk
-                  </a>
+            return (
+              <div
+                key={place.id}
+                className="rounded-xl border border-white/10 bg-zinc-950/80 p-2.5 transition hover:border-white/20"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-white/5 text-amber-300">
+                      <Icon className="h-3.5 w-3.5" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-bold text-white">{place.name}</p>
+                      <p className="text-[10px] text-zinc-400">
+                        {place.distanceMeters}m away · {place.walkMinutes} min walk
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              );
-            })}
-          </div>
+
+                {/* Partner Cafe Offer / Restroom Badge */}
+                {place.perkTitle && (
+                  <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-amber-400/20 bg-amber-400/10 px-2.5 py-1.5">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <Ticket className="h-3.5 w-3.5 shrink-0 text-amber-300" />
+                      <span className="truncate text-[11px] font-semibold text-amber-100">
+                        {place.perkTitle}
+                      </span>
+                    </div>
+
+                    {place.perkCode && (
+                      isBooked ? (
+                        <button
+                          type="button"
+                          onClick={() => copyVoucher(place.id, place.perkCode!)}
+                          className="inline-flex shrink-0 items-center gap-1 rounded-md bg-[#1ED760] px-2 py-0.5 text-[10px] font-extrabold text-zinc-950 hover:bg-[#A3FF12] cursor-pointer"
+                        >
+                          {copiedId === place.id ? (
+                            <>
+                              <Check className="h-2.5 w-2.5" /> Copied
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="h-2.5 w-2.5" /> {place.perkCode}
+                            </>
+                          )}
+                        </button>
+                      ) : (
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-zinc-300">
+                          <Lock className="h-2.5 w-2.5" /> Book to Unlock
+                        </span>
+                      )
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })
         )}
       </div>
     </div>

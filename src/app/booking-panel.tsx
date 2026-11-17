@@ -434,7 +434,7 @@ export default function BookingPanel({
             </button>
           ))}
         </div>
-        <NearbyChillPanel charger={charger} />
+        <NearbyChillPanel charger={charger} isBooked={Boolean(pendingBookingId)} />
         <div className="mt-3 flex items-end justify-between border-t border-white/10 pt-3">
           <div>
             <p className="text-[10px] text-zinc-500">
