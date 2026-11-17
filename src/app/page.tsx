@@ -1,4 +1,5 @@
 "use client";
+import SupportChatbot from "@/components/support-chatbot";
 
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
@@ -105,6 +106,7 @@ export default function Home() {
         isLoggingOut={isLoggingOut}
         logoutError={logoutError}
       />
+      <SupportChatbot />
     </main>
   );
 }
