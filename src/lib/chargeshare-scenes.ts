@@ -414,3 +414,129 @@ export function createGlobeScene(canvas: HTMLCanvasElement) {
     disposeScene(scene, renderer);
   };
 }
+
+const PIN_LAYOUT: Record<string, Array<[number, number, "s" | "l"]>> = {
+  "Type 2": [[-0.5, 0.25, "s"], [-0.18, 0.42, "s"], [0.18, 0.42, "s"], [0.5, 0.25, "s"], [0, -0.05, "s"], [-0.3, -0.45, "s"], [0.3, -0.45, "s"]],
+  "CCS2": [[-0.5, 0.45, "s"], [-0.18, 0.62, "s"], [0.18, 0.62, "s"], [0.5, 0.45, "s"], [0, 0.25, "s"], [-0.36, -0.42, "l"], [0.36, -0.42, "l"]],
+  "CHAdeMO": [[-0.42, 0.15, "l"], [0.42, 0.15, "l"], [-0.55, -0.5, "s"], [-0.18, -0.55, "s"], [0.18, -0.55, "s"], [0.55, -0.5, "s"], [0, 0.6, "s"]],
+  "15A Socket": [[-0.28, 0.2, "s"], [0.28, 0.2, "s"], [0, -0.38, "l"]],
+};
+
+export function createConnectorScene(canvas: HTMLCanvasElement, { powerKw, connector }: { powerKw: number; connector: string }) {
+  const renderer = makeRenderer(canvas);
+  if (!renderer || !canvas.parentElement) return null;
+  const parent = canvas.parentElement;
+  const cls = powerClass(powerKw);
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 60);
+  camera.position.set(0, 1.8, 7.6);
+  camera.lookAt(0, 1.1, 0);
+
+  scene.add(new THREE.HemisphereLight(0xcfe3ff, 0x0b1c3a, 1.2));
+  const key = new THREE.DirectionalLight(0xffffff, 2.2);
+  key.position.set(4, 6, 6);
+  scene.add(key);
+  const fill = new THREE.PointLight(cls.color, 3, 12);
+  fill.position.set(-2, 2, 3);
+  scene.add(fill);
+
+  const root = new THREE.Group();
+  scene.add(root);
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(4.1, 64), std(0x0d2a55, 0.1, 0.9));
+  floor.rotation.x = -Math.PI / 2;
+  root.add(floor);
+  const floorRing = new THREE.Mesh(new THREE.RingGeometry(3.4, 3.46, 96), basic(cls.color, 0.85, { side: THREE.DoubleSide }));
+  floorRing.rotation.x = -Math.PI / 2;
+  floorRing.position.y = 0.01;
+  root.add(floorRing);
+
+  const unit = new THREE.Group();
+  unit.position.set(-1.55, 0, 0);
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.58, 0.66, 0.14, 32), std(0x2a3b5c, 0.5, 0.5));
+  base.position.y = 0.07;
+  const post = new THREE.Mesh(new THREE.BoxGeometry(0.92, 2.25, 0.56), std(0xeaf0fb, 0.3, 0.35));
+  post.position.y = 1.25;
+  const band = new THREE.Mesh(new THREE.BoxGeometry(0.96, 0.12, 0.6), basic(cls.color));
+  band.position.y = 2.3;
+  const scr = textTexture(256, 256, (ctx, w, h) => {
+    ctx.fillStyle = "#071a36";
+    ctx.fillRect(0, 0, w, h);
+    ctx.textAlign = "center";
+    ctx.fillStyle = cls.hex;
+    ctx.font = "800 74px Inter, sans-serif";
+    ctx.fillText(`${powerKw}`, w / 2, 108);
+    ctx.fillStyle = "#fff";
+    ctx.font = "700 32px Inter, sans-serif";
+    ctx.fillText("kW", w / 2, 150);
+    ctx.fillStyle = "#7fb8ff";
+    ctx.font = "600 24px Inter, sans-serif";
+    ctx.fillText(connector, w / 2, 200);
+    ctx.font = "500 19px Inter, sans-serif";
+    ctx.fillText(cls.name, w / 2, 232);
+  });
+  scr.update();
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.68, 0.68), basic(0xffffff, 1, { map: scr.tex }));
+  screen.position.set(0, 1.5, 0.285);
+  unit.add(base, post, band, screen);
+  root.add(unit);
+
+  const plug = new THREE.Group();
+  plug.position.set(1.55, 1.4, 0);
+  const wide = connector === "CCS2" || connector === "CHAdeMO";
+  const head = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.95, 0.52, 48), std(0x1d2b45, 0.4, 0.4));
+  head.rotation.x = Math.PI / 2;
+  head.scale.set(wide ? 1.08 : 0.92, 1, wide ? 1.12 : 0.92);
+  const face = new THREE.Mesh(new THREE.CircleGeometry(0.82, 48), std(0x0a1220, 0.2, 0.7));
+  face.position.z = 0.268;
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.84, 0.032, 12, 64), basic(cls.color));
+  rim.position.z = 0.27;
+  plug.add(head, face, rim);
+
+  const gold = std(0xe9c46a, 0.9, 0.25);
+  (PIN_LAYOUT[connector] || PIN_LAYOUT["Type 2"]).forEach(([x, y, k]) => {
+    const g = new THREE.CylinderGeometry(k === "l" ? 0.14 : 0.06, k === "l" ? 0.14 : 0.06, 0.28, 20);
+    g.rotateX(Math.PI / 2);
+    const p = new THREE.Mesh(g, gold);
+    p.position.set(x, y, 0.38);
+    plug.add(p);
+  });
+  root.add(plug);
+
+  const curve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(1.55, 1.4, -0.26),
+    new THREE.Vector3(1.75, 0.48, -0.82),
+    new THREE.Vector3(0.4, 0.12, -0.55),
+    new THREE.Vector3(-0.85, 0.4, 0.32),
+    new THREE.Vector3(-1.55, 0.6, 0.32),
+  ]);
+  root.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 80, 0.055, 10), std(0x1a2740, 0.3, 0.6)));
+  const pulses = Array.from({ length: 5 }, () => {
+    const m = new THREE.Mesh(new THREE.SphereGeometry(0.065, 12, 12), basic(0xffffff));
+    root.add(m);
+    return m;
+  });
+  const speed = 0.14 + (Math.min(powerKw, 120) / 120) * 0.45;
+  const drag = dragRotate(canvas);
+  drag.yaw = -0.3;
+  const ro = new ResizeObserver(() => fitToParent(renderer, camera, parent));
+  ro.observe(parent);
+  fitToParent(renderer, camera, parent);
+
+  const reduceMotion = getReduceMotion();
+  const stop = runLoop(parent, (t) => {
+    const m = reduceMotion ? 0 : 1;
+    if (!drag.dragging) {
+      drag.vel *= 0.94;
+      drag.yaw += drag.vel + 0.003 * m;
+    }
+    root.rotation.y = drag.yaw;
+    plug.rotation.y = Math.sin(t * 0.8) * 0.16 * m;
+    pulses.forEach((p, i) => p.position.copy(curve.getPointAt(1 - (((t * speed * m) + i / pulses.length) % 1))));
+    renderer.render(scene, camera);
+  });
+  return () => {
+    stop();
+    ro.disconnect();
+    disposeScene(scene, renderer);
+  };
+}
