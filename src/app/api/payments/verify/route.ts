@@ -1,5 +1,5 @@
-import { createHmac, randomInt, timingSafeEqual } from "node:crypto";
-import { BookingStatus, Prisma } from "@prisma/client";
+import { createHmac, timingSafeEqual } from "node:crypto";
+import { BookingStatus } from "@prisma/client";
 import { getAuthenticatedUser } from "@/lib/auth";
 import {
   confirmedBookingResponseSchema,
@@ -8,6 +8,7 @@ import {
 import { parseJsonBody } from "@/lib/parse-json-body";
 import { prisma } from "@/lib/prisma";
 import { getRazorpayClient } from "@/lib/razorpay";
+import { confirmBookingAfterPayment } from "@/lib/confirm-booking";
 
 function isValidRazorpaySignature(
   orderId: string,
@@ -20,32 +21,6 @@ function isValidRazorpaySignature(
     .digest();
   const received = Buffer.from(signature, "hex");
   return received.length === expected.length && timingSafeEqual(received, expected);
-}
-
-function confirmedBookingPayload(booking: {
-  id: string;
-  startTime: Date | string;
-  endTime: Date | string;
-  totalAmount: number;
-  status: BookingStatus;
-  unlockPin: string | null;
-  charger: { title: string; exactAddress: string };
-}) {
-  return confirmedBookingResponseSchema.parse({
-    id: booking.id,
-    startTime:
-      booking.startTime instanceof Date
-        ? booking.startTime.toISOString()
-        : booking.startTime,
-    endTime:
-      booking.endTime instanceof Date
-        ? booking.endTime.toISOString()
-        : booking.endTime,
-    totalAmount: booking.totalAmount,
-    status: booking.status,
-    unlockPin: booking.unlockPin,
-    charger: booking.charger,
-  });
 }
 
 export async function POST(request: Request) {
@@ -79,11 +54,20 @@ export async function POST(request: Request) {
         totalAmount: true,
         status: true,
         unlockPin: true,
-        charger: { select: { title: true, exactAddress: true } },
+        charger: { select: { title: true, exactAddress: true, description: true } },
       },
     });
     if (confirmedBooking?.unlockPin) {
-      return Response.json(confirmedBookingPayload(confirmedBooking));
+      return Response.json(confirmedBookingResponseSchema.parse({
+        ...confirmedBooking,
+        startTime: confirmedBooking.startTime.toISOString(),
+        endTime: confirmedBooking.endTime.toISOString(),
+        charger: {
+          title: confirmedBooking.charger.title,
+          exactAddress: confirmedBooking.charger.exactAddress,
+          accessInstructions: confirmedBooking.charger.description,
+        },
+      }));
     }
 
     const booking = await prisma.booking.findFirst({
@@ -95,9 +79,6 @@ export async function POST(request: Request) {
       },
       select: {
         id: true,
-        chargerId: true,
-        startTime: true,
-        endTime: true,
         totalAmount: true,
       },
     });
@@ -146,136 +127,26 @@ export async function POST(request: Request) {
       });
     }
 
-    let result;
-    try {
-      result = await prisma.$transaction(
-        async (transaction) => {
-          const currentBooking = await transaction.booking.findFirst({
-            where: {
-              id: booking.id,
-              driverId: user.id,
-              status: BookingStatus.PENDING,
-              razorpayOrderId: parsed.data.razorpay_order_id,
-            },
-            select: { id: true },
-          });
-
-          if (!currentBooking) return { kind: "unavailable" as const };
-
-          const overlappingBooking = await transaction.booking.findFirst({
-            where: {
-              chargerId: booking.chargerId,
-              id: { not: booking.id },
-              status: { in: [BookingStatus.CONFIRMED, BookingStatus.ACTIVE] },
-              startTime: { lt: booking.endTime },
-              endTime: { gt: booking.startTime },
-            },
-            select: { id: true },
-          });
-
-          if (overlappingBooking) return { kind: "conflict" as const };
-
-          const unlockPin = randomInt(0, 1_000_000).toString().padStart(6, "0");
-          const confirmedBooking = await transaction.booking.update({
-            where: { id: booking.id },
-            data: {
-              status: BookingStatus.CONFIRMED,
-              paymentId: parsed.data.razorpay_payment_id,
-              unlockPin,
-            },
-            select: {
-              id: true,
-              startTime: true,
-              endTime: true,
-              totalAmount: true,
-              status: true,
-              unlockPin: true,
-              charger: { select: { title: true, exactAddress: true } },
-            },
-          });
-
-          return {
-            kind: "confirmed" as const,
-            booking: {
-              id: confirmedBooking.id,
-              startTime: confirmedBooking.startTime.toISOString(),
-              endTime: confirmedBooking.endTime.toISOString(),
-              totalAmount: confirmedBooking.totalAmount,
-              status: confirmedBooking.status,
-              unlockPin: confirmedBooking.unlockPin,
-              charger: confirmedBooking.charger,
-            },
-          };
-        },
-        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
-      );
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === "P2034"
-      ) {
-        const alreadyConfirmed = await prisma.booking.findFirst({
-          where: {
-            id: booking.id,
-            driverId: user.id,
-            status: BookingStatus.CONFIRMED,
-            paymentId: parsed.data.razorpay_payment_id,
-            razorpayOrderId: parsed.data.razorpay_order_id,
-          },
-          select: {
-            id: true,
-            startTime: true,
-            endTime: true,
-            totalAmount: true,
-            status: true,
-            unlockPin: true,
-            charger: { select: { title: true, exactAddress: true } },
-          },
-        });
-        if (alreadyConfirmed?.unlockPin) {
-          return Response.json(confirmedBookingPayload(alreadyConfirmed));
-        }
-
-        await razorpay.client.payments.refund(
-          parsed.data.razorpay_payment_id,
-          { amount: expectedAmount, notes: { booking_id: booking.id } },
-        );
-        return Response.json(
-          { error: "The slot was booked first. Your payment is being refunded." },
-          { status: 409 },
-        );
-      }
-      throw error;
-    }
-
+    const result = await confirmBookingAfterPayment({
+      bookingId: booking.id,
+      driverId: user.id,
+      razorpayOrderId: parsed.data.razorpay_order_id,
+      paymentId: parsed.data.razorpay_payment_id,
+    });
     if (result.kind === "unavailable") {
       return Response.json({ error: "This booking can no longer be confirmed." }, {
         status: 409,
       });
     }
     if (result.kind === "conflict") {
-      await razorpay.client.payments.refund(
-        parsed.data.razorpay_payment_id,
-        { amount: expectedAmount, notes: { booking_id: booking.id } },
-      );
       return Response.json(
         { error: "This slot was booked first. Your payment is being refunded." },
         { status: 409 },
       );
     }
 
-    return Response.json(confirmedBookingPayload(result.booking));
+    return Response.json(result.booking);
   } catch (error) {
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === "P2034"
-    ) {
-      return Response.json(
-        { error: "This charger already has a booking for that time." },
-        { status: 409 },
-      );
-    }
-
     console.error("POST /api/payments/verify failed:", error);
     return Response.json(
       { error: "Unable to verify the payment." },

@@ -27,7 +27,7 @@ export const connectorFilterSchema = z.union([
 export const publicChargerSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1),
-  description: z.string().nullable().default(null),
+  description: z.null().default(null),
   approxLat: z.number().min(-90).max(90),
   approxLng: z.number().min(-180).max(180),
   connectorType: z.enum(connectorTypes),

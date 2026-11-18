@@ -20,8 +20,8 @@ export default function TermsPage() {
           ChargeShare operates as a peer-to-peer EV charging marketplace enabling verified property hosts to share private AC/DC charging points with registered EV drivers in compliance with Ministry of Power EV charging guidelines.
         </p>
         <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-4 text-sm text-slate-600">
-          <p><strong className="text-slate-900">Tariffs &amp; Billing:</strong> Hosts set per-hour or per-kWh rates transparently prior to checkout. Applicable payment gateway charges and GST are itemized on every receipt.</p>
-          <p><strong className="text-slate-900">Cancellations:</strong> Bookings cancelled at least 30 minutes prior to the scheduled slot or unactivated due to host unavailability qualify for an automated full refund.</p>
+          <p><strong className="text-slate-900">Tariffs &amp; Billing:</strong> Hosts set a per-hour rate, and the total is shown before checkout.</p>
+          <p><strong className="text-slate-900">Refunds:</strong> Refunds are issued only when a slot cannot be honoured (double-booking); for anything else contact support.</p>
           <p><strong className="text-slate-900">Data Privacy:</strong> Exact driveway gate instructions and 6-digit relay PINs are shared exclusively with confirmed drivers during active booking windows.</p>
         </div>
       </div>

@@ -5,7 +5,7 @@
 - Next.js using the App Router and TypeScript
 - Tailwind CSS for styling
 - Leaflet with OpenStreetMap tiles for maps
-- SQLite with Prisma ORM for persistence
+- PostgreSQL with Prisma ORM for persistence
 - JWT authentication stored in HttpOnly cookies
 - Razorpay payments in test mode
 - Zod for validating all inputs

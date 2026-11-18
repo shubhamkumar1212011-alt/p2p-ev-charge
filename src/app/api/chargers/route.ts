@@ -1,6 +1,10 @@
 import { ConnectorType, StationType } from "@prisma/client";
 import { z } from "zod";
-import { getAuthenticatedUser } from "@/lib/auth";
+import {
+  createSessionToken,
+  getAuthenticatedUser,
+  setSessionCookie,
+} from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
   chargerLocationQuerySchema,
@@ -24,7 +28,8 @@ const overpassResponseSchema = z.object({
   ),
 });
 
-type DiscoveredStation = Omit<PublicCharger, "distanceKm"> & {
+type DiscoveredStation = Omit<PublicCharger, "distanceKm" | "description"> & {
+  description: string;
   exactAddress: string;
 };
 
@@ -46,7 +51,7 @@ function inferConnectorType(tags: Record<string, string>): ConnectorType {
 }
 
 function inferPowerKw(tags: Record<string, string>, connectorType: ConnectorType): number {
-  const rawOutput = tags["socket:type2_combo:output"] || tags["socket:type2:output"] || tags.capacity;
+  const rawOutput = tags["socket:type2_combo:output"] || tags["socket:type2:output"];
   if (rawOutput) {
     const match = rawOutput.match(/(\d+(\.\d+)?)/);
     if (match) {
@@ -106,8 +111,8 @@ out body 12;
         powerKw,
         pricePerHour: powerKw >= 30 ? 320 : 140,
         amenities: el.tags.covered === "yes" ? ["Covered Parking"] : [],
-        rating: 4.6,
-        reviewCount: 4,
+        rating: 0,
+        reviewCount: 0,
         isCommunityHost: false,
         hostName: operator || "Public Grid",
         isAvailable: true,
@@ -142,6 +147,8 @@ async function upsertOsmStations(stations: DiscoveredStation[]) {
           connectorType: station.connectorType,
           powerKw: station.powerKw,
           pricePerHour: station.pricePerHour,
+          rating: 0,
+          reviewCount: 0,
         },
         create: {
           id: station.id,
@@ -197,7 +204,7 @@ export async function GET(request: Request) {
     const communityMapped: PublicCharger[] = dbCommunityChargers.map((c) => ({
       id: c.id,
       title: c.title,
-      description: c.description,
+      description: null,
       approxLat: c.approxLat,
       approxLng: c.approxLng,
       connectorType: c.connectorType,
@@ -220,7 +227,7 @@ export async function GET(request: Request) {
     const osmMapped: PublicCharger[] = osmDiscovered.map((s) => ({
       id: s.id,
       title: s.title,
-      description: s.description,
+      description: null,
       approxLat: s.approxLat,
       approxLng: s.approxLng,
       connectorType: s.connectorType,
@@ -228,8 +235,8 @@ export async function GET(request: Request) {
       powerKw: s.powerKw,
       pricePerHour: s.pricePerHour,
       amenities: s.amenities,
-      rating: s.rating,
-      reviewCount: s.reviewCount,
+      rating: 0,
+      reviewCount: 0,
       isCommunityHost: false,
       hostName: s.hostName,
       isAvailable: s.isAvailable,
@@ -271,6 +278,8 @@ export async function POST(request: Request) {
         where: { id: user.id },
         data: { role: "HOST" },
       });
+      const token = await createSessionToken({ id: user.id, role: "HOST" });
+      await setSessionCookie(token);
     }
 
     const created = await prisma.charger.create({
@@ -279,15 +288,15 @@ export async function POST(request: Request) {
         title: data.title,
         description: data.description || null,
         exactAddress: data.exactAddress,
-        approxLat: data.approxLat,
-        approxLng: data.approxLng,
+        approxLat: Math.round(data.approxLat * 1000) / 1000,
+        approxLng: Math.round(data.approxLng * 1000) / 1000,
         connectorType: data.connectorType,
         stationType: "CHARGING",
         powerKw: data.powerKw,
         pricePerHour: data.pricePerHour,
         amenities: data.amenities,
-        rating: 5.0,
-        reviewCount: 1,
+        rating: 0,
+        reviewCount: 0,
         isAvailable: true,
       },
     });
@@ -295,7 +304,7 @@ export async function POST(request: Request) {
     const responsePayload = publicChargerSchema.parse({
       id: created.id,
       title: created.title,
-      description: created.description,
+      description: null,
       approxLat: created.approxLat,
       approxLng: created.approxLng,
       connectorType: created.connectorType,

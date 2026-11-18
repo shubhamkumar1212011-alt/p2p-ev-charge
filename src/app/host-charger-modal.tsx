@@ -287,7 +287,7 @@ export default function HostChargerModal({
 
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">
-              Driver Access Instructions (Optional)
+              Driver access instructions (shown only to drivers after payment)
             </label>
             <input
               type="text"

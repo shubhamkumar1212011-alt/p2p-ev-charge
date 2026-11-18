@@ -29,9 +29,7 @@ const FEATURED_STATIONS = [
     powerKw: 7.4,
     connector: "Type 2",
     pricePerHour: 135,
-    rating: "4.9",
-    sessions: 142,
-    badges: ["MCB & Earthing Verified", "Covered Driveway", "Cafe 120m"],
+    badges: ["Covered Driveway", "Cafe 120m"],
   },
   {
     id: "blr-jpnagar",
@@ -40,8 +38,6 @@ const FEATURED_STATIONS = [
     powerKw: 7.4,
     connector: "Type 2",
     pricePerHour: 120,
-    rating: "4.8",
-    sessions: 98,
     badges: ["24x7 Security", "Washroom Access", "PIN Relay"],
   },
   {
@@ -51,8 +47,6 @@ const FEATURED_STATIONS = [
     powerKw: 22.0,
     connector: "Type 2",
     pricePerHour: 290,
-    rating: "5.0",
-    sessions: 64,
     badges: ["Solar-Backed", "Covered Bay", "Lounge & Wi-Fi"],
   },
   {
@@ -62,9 +56,7 @@ const FEATURED_STATIONS = [
     powerKw: 30.0,
     connector: "CCS2",
     pricePerHour: 480,
-    rating: "4.9",
-    sessions: 215,
-    badges: ["DC Rapid", "BIS Certified", "24x7 Open"],
+    badges: ["DC Rapid", "24x7 Open"],
   },
 ];
 
@@ -72,20 +64,20 @@ const PHOTO_CARDS = [
   {
     src: "/images/host-driveway.jpg",
     tag: "Residential Hosts",
-    title: "Verified home driveways & society bays",
+    title: "Example home driveways & society bays",
     desc: "Reserve a dedicated wallbox ahead of time and unlock power with your 6-digit relay PIN—no public queue delays.",
   },
   {
     src: "/images/cafe-chill.jpg",
     tag: "Charge & Chill",
-    title: "Curated cafes & restrooms within 450m",
+    title: "Nearby cafes & restrooms within 300m",
     desc: "Every station pin surfaces real walking-distance coffee spots, eateries, and washrooms via OpenStreetMap.",
   },
   {
     src: "/images/connector-guide.jpg",
     tag: "Host Economics",
     title: "Monetize idle parking safely",
-    desc: "Set custom ₹/hour tariffs, control availability hours, and receive automated Razorpay settlements.",
+    desc: "Set a per-hour tariff and share your charger listing with nearby drivers.",
   },
 ];
 
@@ -260,13 +252,13 @@ export default function LandingShowcase({ onAuthenticated, sessionError }: Landi
           <div className="lg:col-span-6">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-1 text-xs font-semibold text-sky-100">
               <ShieldCheckIcon className="h-3.5 w-3.5 text-[#19c37d]" />
-              <span>MCB-Verified Residential &amp; Commercial Chargers</span>
+              <span>Community-hosted EV chargers</span>
             </div>
             <h1 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-5xl leading-[1.14]">
-              Reserve verified <span className="text-[#19c37d]">EV chargers</span> in your neighborhood.
+              Reserve <span className="text-[#19c37d]">EV chargers</span> in your neighborhood.
             </h1>
             <p className="mt-4 max-w-xl text-sm sm:text-base text-sky-100/90 leading-relaxed">
-              Book private Type 2 wallboxes and rapid CCS2 bays by the hour. Pay securely via UPI or card, unlock power with a 6-digit relay PIN, and get automatic refunds if a slot is unavailable.
+              Browse private Type 2 wallboxes and CCS2 bays by the hour. Pay via UPI or card and receive a 6-digit relay PIN after a booking is confirmed.
             </p>
 
             {/* Search + Vehicle Selector Bar */}
@@ -303,8 +295,8 @@ export default function LandingShowcase({ onAuthenticated, sessionError }: Landi
                 <p className="text-sky-200/80">Hardware relay unlock</p>
               </div>
               <div>
-                <p className="text-lg font-extrabold text-white">100% Refund</p>
-                <p className="text-sky-200/80">If bay is inaccessible</p>
+                <p className="text-lg font-extrabold text-white">300m Nearby</p>
+                <p className="text-sky-200/80">Public places on OpenStreetMap</p>
               </div>
             </div>
           </div>
@@ -328,9 +320,9 @@ export default function LandingShowcase({ onAuthenticated, sessionError }: Landi
       <section id="live-stations" className="mx-auto max-w-6xl px-4 py-16">
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
           <div>
-            <p className="text-xs font-extrabold uppercase tracking-widest text-[#12965f]">Transparent Tariffs</p>
+            <p className="text-xs font-extrabold uppercase tracking-widest text-[#12965f]">Example listings</p>
             <h2 className="mt-1.5 text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
-              Featured Chargers &amp; EV Time Estimator
+              Example Chargers &amp; EV Time Estimator
             </h2>
             <p className="mt-1.5 text-sm text-slate-600">
               Select your EV model to preview realistic 20% to 80% charging duration and estimated session cost.
@@ -370,9 +362,6 @@ export default function LandingShowcase({ onAuthenticated, sessionError }: Landi
                     <span className="rounded-md bg-[#0b2447] px-2.5 py-1 text-[11px] font-bold text-white">
                       {st.powerKw} kW · {st.connector}
                     </span>
-                    <span className="text-xs font-bold text-slate-700">
-                      {st.rating} ({st.sessions})
-                    </span>
                   </div>
                   <h3 className="mt-3 text-base font-bold text-slate-900">{st.title}</h3>
                   <p className="text-xs text-slate-500">{st.locality}</p>
@@ -401,7 +390,7 @@ export default function LandingShowcase({ onAuthenticated, sessionError }: Landi
                     onClick={() => scrollToAuth(st.locality)}
                     className="mt-3 w-full rounded-xl bg-slate-900 py-2 text-xs font-bold text-white hover:bg-[#0b2447] transition"
                   >
-                    Book This Bay
+                    Sign in to browse chargers
                   </button>
                 </div>
               </div>
@@ -474,7 +463,7 @@ export default function LandingShowcase({ onAuthenticated, sessionError }: Landi
               Sign in to open the interactive map &amp; book
             </h2>
             <p className="mt-3 text-sm leading-relaxed text-slate-600">
-              View real-time bay availability, nearby cafes within 450m, Razorpay checkout, and your 6-digit relay PIN dashboard.
+              View charger listings, nearby cafes within 300m, checkout, and your 6-digit relay PIN dashboard.
             </p>
             <div className="relative mt-6 h-[300px] w-full overflow-hidden rounded-3xl bg-[#071a36] shadow-lg">
               <canvas ref={globeCanvasRef} className="block h-full w-full" />
@@ -513,7 +502,7 @@ export default function LandingShowcase({ onAuthenticated, sessionError }: Landi
               ChargeShare
             </div>
             <p className="mt-3 leading-relaxed text-sky-200/75">
-              Community peer-to-peer EV charging network with hardware PIN relay protection and Razorpay escrow checkout.
+              Community peer-to-peer EV charging network with PIN-based booking confirmation and Razorpay checkout.
             </p>
           </div>
           <div className="space-y-2">

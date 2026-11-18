@@ -29,15 +29,15 @@ function buildReply(raw: string): string {
     return "Most residential P2P hosts offer 3.3 kW–7.4 kW Type 2 AC (ideal for 2–4 hr top-ups while you dine or work), while commercial hubs provide 30–60 kW CCS2 DC rapid charging. Filter by connector type directly on the live map.";
   }
   if (q.includes("host") || q.includes("earn") || q.includes("list") || q.includes("money")) {
-    return "Click '+ List Your Charger' on the live map, set your kW rate, ₹/kWh tariff, and on-site utilities (Washroom, Cafe, Covered Parking). Earnings settle securely after each verified session.";
+    return "Click '+ List Your Charger' on the live map, set your charger details and per-hour rate, and list on-site utilities. The app does not process host payouts.";
   }
   if (q.includes("chill") || q.includes("cafe") || q.includes("washroom") || q.includes("food") || q.includes("nearby")) {
-    return "Tap any charger pin on the map to open 'Charge & Chill'—it shows verified host utilities plus real walking-distance cafes, restaurants, and restrooms within 450m via OpenStreetMap.";
+    return "Tap any charger pin on the map to open 'Charge & Chill'—it shows host-listed utilities plus cafes, restaurants, and washrooms within 300m via OpenStreetMap.";
   }
   if (q.includes("pay") || q.includes("razorpay") || q.includes("refund") || q.includes("cancel")) {
-    return "All bookings use Razorpay signature-verified checkout. Unused kWh credits or cancelled slots prior to PIN activation are refunded automatically to your original payment method.";
+    return "Bookings use Razorpay checkout. Refunds are issued only when a slot cannot be honoured (double-booking); for anything else contact support.";
   }
-  return "I can help with connector compatibility (Type 2 vs CCS2), 6-digit relay PIN unlocking, Razorpay booking protection, nearby Charge & Chill cafes, or listing your home charger. What would you like to check?";
+  return "I can help with connector compatibility (Type 2 vs CCS2), 6-digit relay PINs, Razorpay payments, nearby Charge & Chill places, or listing a charger. What would you like to check?";
 }
 
 export async function POST(request: Request) {

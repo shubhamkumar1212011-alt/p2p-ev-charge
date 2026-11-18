@@ -16,10 +16,10 @@ export default function SafetyPage() {
 
       <div className="mx-auto max-w-4xl px-4 py-12 space-y-8">
         <div>
-          <p className="text-xs font-bold uppercase tracking-widest text-[#12965f]">Trust &amp; Electrical Standards</p>
-          <h1 className="mt-2 text-3xl font-extrabold text-slate-900">Safety &amp; Host Verification Protocol</h1>
+          <p className="text-xs font-bold uppercase tracking-widest text-[#12965f]">Electrical Safety &amp; Payments</p>
+          <h1 className="mt-2 text-3xl font-extrabold text-slate-900">Safety Information</h1>
           <p className="mt-3 text-sm leading-relaxed text-slate-600">
-            Every residential and commercial charger listed on ChargeShare undergoes electrical safety, tariff transparency, and relay access verification before accepting bookings.
+            Drivers should confirm charger compatibility and site access instructions before travelling.
           </p>
         </div>
 
@@ -34,12 +34,14 @@ export default function SafetyPage() {
           </section>
 
           <section className="rounded-2xl border border-slate-200 bg-white p-6">
-            <h2 className="text-base font-bold text-slate-900">2. Razorpay Escrow &amp; PIN Unlock</h2>
+            <h2 className="text-base font-bold text-slate-900">2. Payment &amp; PIN Unlock</h2>
             <ul className="mt-3 space-y-2 text-sm text-slate-600 list-disc pl-4">
-              <li>Session funds are authorized via Razorpay signature verification before start.</li>
+              <li>Payments are processed through Razorpay before a booking is confirmed.</li>
               <li>Power relay unlocks strictly when the driver enters their unique 6-digit booking PIN.</li>
-              <li>100% automatic refund if a bay is blocked or relay fails to initialize.</li>
             </ul>
+            <p className="mt-3 text-sm text-slate-600">
+              Refunds are issued only when a slot cannot be honoured (double-booking); for anything else contact support.
+            </p>
           </section>
         </div>
       </div>

@@ -103,8 +103,17 @@ export const confirmedBookingResponseSchema = z.object({
   charger: z.object({
     title: z.string(),
     exactAddress: z.string(),
+    accessInstructions: z.string().nullable().optional(),
   }),
 });
+
+export const activeBookingResponseSchema = confirmedBookingResponseSchema.extend({
+  status: z.enum(["CONFIRMED", "ACTIVE"]),
+});
+
+export const bookingsResponseSchema = z.array(
+  activeBookingResponseSchema.extend({ chargerId: z.string() }),
+);
 
 export const chargerRelayResponseSchema = z.object({
   relayStatus: z.literal("POWER_ON"),
@@ -117,3 +126,4 @@ export const apiErrorSchema = z.object({
 
 export type AuthUser = z.infer<typeof authUserSchema>;
 export type ConfirmedBooking = z.infer<typeof confirmedBookingResponseSchema>;
+export type ActiveBooking = z.infer<typeof activeBookingResponseSchema>;

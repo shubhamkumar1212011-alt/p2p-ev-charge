@@ -100,7 +100,7 @@ export async function POST(request: Request) {
             totalAmount: true,
             status: true,
             unlockPin: true,
-            charger: { select: { title: true, exactAddress: true } },
+            charger: { select: { title: true, exactAddress: true, description: true } },
           },
         });
 
@@ -113,7 +113,11 @@ export async function POST(request: Request) {
             totalAmount: confirmedBooking.totalAmount,
             status: confirmedBooking.status,
             unlockPin: confirmedBooking.unlockPin,
-            charger: confirmedBooking.charger,
+            charger: {
+              title: confirmedBooking.charger.title,
+              exactAddress: confirmedBooking.charger.exactAddress,
+              accessInstructions: confirmedBooking.charger.description,
+            },
           },
         };
       },

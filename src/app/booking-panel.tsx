@@ -112,8 +112,10 @@ export default function BookingPanel({
   const [bookingError, setBookingError] = useState<string | null>(null);
   const estimatedTotal = charger.pricePerHour * duration;
   const checkoutTotal = serverTotal ?? estimatedTotal;
+  const canBook = user.role === "DRIVER" && charger.isCommunityHost;
 
   async function bookSlot() {
+    if (!canBook) return;
     setIsBooking(true);
     setBookingError(null);
 
@@ -256,7 +258,7 @@ export default function BookingPanel({
 
   return (
     <section className="station-booking-panel absolute bottom-5 right-5 z-[1300] flex max-h-[calc(100vh-110px)] w-[420px] max-w-[calc(100%-2.5rem)] flex-col overflow-y-auto rounded-3xl border border-white/10 bg-[#0B0D10]/90 p-4 text-white shadow-2xl shadow-black/50 backdrop-blur-xl max-sm:bottom-0 max-sm:left-0 max-sm:right-0 max-sm:max-h-[82svh] max-sm:w-auto max-sm:max-w-none max-sm:rounded-b-none max-sm:rounded-t-3xl max-sm:p-5">
-      {checkoutOpen && sandboxAvailable && (
+      {canBook && checkoutOpen && sandboxAvailable && (
         <div
           className="absolute inset-0 z-30 overflow-y-auto bg-[#0B0D10]/95 p-4 backdrop-blur-xl"
           role="dialog"
@@ -434,18 +436,20 @@ export default function BookingPanel({
             </button>
           ))}
         </div>
-        <NearbyChillPanel charger={charger} isBooked={Boolean(pendingBookingId)} />
-        <div className="mt-3 flex items-end justify-between border-t border-white/10 pt-3">
-          <div>
-            <p className="text-[10px] text-zinc-500">
-              {inrFormatter.format(charger.pricePerHour)} / hour · estimate
+        <NearbyChillPanel charger={charger} />
+        {charger.isCommunityHost && (
+          <div className="mt-3 flex items-end justify-between border-t border-white/10 pt-3">
+            <div>
+              <p className="text-[10px] text-zinc-500">
+                {inrFormatter.format(charger.pricePerHour)} / hour · estimate
+              </p>
+              <p className="mt-1 text-xs text-zinc-300">Server-calculated total</p>
+            </div>
+            <p className="text-xl font-extrabold text-white">
+              {inrFormatter.format(serverTotal ?? estimatedTotal)}
             </p>
-            <p className="mt-1 text-xs text-zinc-300">Server-calculated total</p>
           </div>
-          <p className="text-xl font-extrabold text-white">
-            {inrFormatter.format(serverTotal ?? estimatedTotal)}
-          </p>
-        </div>
+        )}
       </div>
 
       {bookingError && !checkoutOpen && (
@@ -453,7 +457,7 @@ export default function BookingPanel({
           {bookingError}
         </p>
       )}
-      {sandboxAvailable ? (
+      {canBook && sandboxAvailable ? (
         !checkoutOpen && (
           <button
             type="button"
@@ -464,7 +468,7 @@ export default function BookingPanel({
             Reopen Sandbox Checkout · {inrFormatter.format(checkoutTotal)}
           </button>
         )
-      ) : (
+      ) : canBook ? (
         <button
           type="button"
           onClick={bookSlot}
@@ -475,15 +479,19 @@ export default function BookingPanel({
             ? "Opening secure checkout…"
             : `Proceed to Pay · ${inrFormatter.format(serverTotal ?? estimatedTotal)}`}
         </button>
-      )}
-      {false && (
+      ) : null}
+      {!canBook && (
         <p className="mt-2 text-center text-[10px] text-zinc-500">
-          Host accounts can’t create driver bookings.
+          {charger.isCommunityHost
+            ? "Host accounts can't book. Sign up with a driver account to reserve chargers."
+            : "Public stations are for discovery only. Book a community-hosted charger."}
         </p>
       )}
-      <p className="mt-3 text-center text-[9px] text-zinc-600">
-        Final amount is calculated by the server before checkout.
-      </p>
+      {canBook && (
+        <p className="mt-3 text-center text-[9px] text-zinc-600">
+          Final amount is calculated by the server before checkout.
+        </p>
+      )}
     </section>
   );
 }

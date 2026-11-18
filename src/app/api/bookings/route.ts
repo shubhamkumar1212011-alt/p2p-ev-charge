@@ -2,12 +2,73 @@ import { BookingStatus, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth";
 import {
+  bookingsResponseSchema,
   bookingRequestSchema,
   bookingReservationResponseSchema,
 } from "@/lib/api-schemas";
 import { parseJsonBody } from "@/lib/parse-json-body";
 
 const pendingReservationLifetimeMs = 15 * 60 * 1000;
+
+export async function GET() {
+  try {
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return Response.json({ error: "Authentication required." }, { status: 401 });
+    }
+    if (user.role !== "DRIVER") {
+      return Response.json(
+        { error: "Only driver accounts can view bookings." },
+        { status: 403 },
+      );
+    }
+
+    const bookings = await prisma.booking.findMany({
+      where: {
+        driverId: user.id,
+        status: { in: [BookingStatus.CONFIRMED, BookingStatus.ACTIVE] },
+        endTime: { gt: new Date() },
+      },
+      orderBy: { startTime: "asc" },
+      select: {
+        id: true,
+        chargerId: true,
+        startTime: true,
+        endTime: true,
+        totalAmount: true,
+        status: true,
+        unlockPin: true,
+        charger: {
+          select: {
+            title: true,
+            exactAddress: true,
+            description: true,
+          },
+        },
+      },
+    });
+
+    const response = bookings.map((booking) => ({
+      id: booking.id,
+      chargerId: booking.chargerId,
+      startTime: booking.startTime.toISOString(),
+      endTime: booking.endTime.toISOString(),
+      totalAmount: booking.totalAmount,
+      status: booking.status,
+      unlockPin: booking.unlockPin,
+      charger: {
+        title: booking.charger.title,
+        exactAddress: booking.charger.exactAddress,
+        accessInstructions: booking.charger.description,
+      },
+    }));
+
+    return Response.json(bookingsResponseSchema.parse(response));
+  } catch (error) {
+    console.error("GET /api/bookings failed:", error);
+    return Response.json({ error: "Unable to load bookings." }, { status: 500 });
+  }
+}
 
 export async function POST(request: Request) {
   const parsed = await parseJsonBody(request, bookingRequestSchema);
@@ -22,6 +83,12 @@ export async function POST(request: Request) {
       return Response.json(
         { error: "Only driver accounts can create bookings." },
         { status: 403 },
+      );
+    }
+    if (parsed.data.chargerId.startsWith("osm-")) {
+      return Response.json(
+        { error: "Public stations are for discovery only. Book a community-hosted charger." },
+        { status: 400 },
       );
     }
 

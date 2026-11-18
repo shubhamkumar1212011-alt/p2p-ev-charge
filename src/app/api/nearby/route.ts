@@ -15,20 +15,7 @@ export type NearbyPlace = {
   lat: number;
   lng: number;
   perkTitle?: string;
-  perkCode?: string;
 };
-
-const CAFE_PERKS = [
-  { title: "15% OFF Coffee & Bakery Combo", prefix: "BREW15" },
-  { title: "Free Espresso / Cold Brew with 1hr+ Charge", prefix: "VOLTFREE" },
-  { title: "₹75 OFF All-Day Breakfast & Snacks", prefix: "CHILL75" },
-  { title: "Buy 1 Get 1 Beverage While Charging", prefix: "BOGOEV" },
-];
-
-const DINING_PERKS = [
-  { title: "10% OFF Total Dining Bill for EV Drivers", prefix: "DINE10" },
-  { title: "Complimentary Welcome Cooler + Lounge Seat", prefix: "LOUNGE" },
-];
 
 function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371000;
@@ -122,22 +109,6 @@ export async function GET(request: Request) {
       if (distanceMeters > 300) continue;
 
       const walkMinutes = Math.max(1, Math.round(distanceMeters / 75));
-      const hashSeed = Math.abs(Math.round(pLat * 10000 + pLng * 10000));
-
-      let perkTitle: string | undefined;
-      let perkCode: string | undefined;
-
-      if (category === "CAFE") {
-        const perk = CAFE_PERKS[hashSeed % CAFE_PERKS.length];
-        perkTitle = perk.title;
-        perkCode = `CS-${perk.prefix}-${String(hashSeed % 900 + 100)}`;
-      } else if (category === "RESTAURANT") {
-        const perk = DINING_PERKS[hashSeed % DINING_PERKS.length];
-        perkTitle = perk.title;
-        perkCode = `CS-${perk.prefix}-${String(hashSeed % 900 + 100)}`;
-      } else {
-        perkTitle = "Verified Clean Washroom Access";
-      }
 
       places.push({
         id: `${el.type}-${el.id}`,
@@ -147,8 +118,9 @@ export async function GET(request: Request) {
         walkMinutes,
         lat: pLat,
         lng: pLng,
-        perkTitle,
-        perkCode,
+        ...(category === "RESTROOM"
+          ? { perkTitle: "Washroom listed on OpenStreetMap" }
+          : {}),
       });
     }
 

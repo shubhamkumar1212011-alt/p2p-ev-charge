@@ -11,7 +11,13 @@ import {
 } from "react-leaflet";
 import BookingPanel from "./booking-panel";
 import HostChargerModal from "./host-charger-modal";
-import type { ConfirmedBooking, AuthUser } from "@/lib/api-schemas";
+import {
+  bookingsResponseSchema,
+  type ActiveBooking,
+  type ConfirmedBooking,
+  type AuthUser,
+} from "@/lib/api-schemas";
+import { parseApiResponse } from "@/lib/api-client";
 import {
   geocodeResultsSchema,
   publicChargersSchema,
@@ -39,7 +45,7 @@ type LocationResult = {
 };
 
 type ActivePass = {
-  booking: ConfirmedBooking;
+  booking: ActiveBooking;
   chargerId: string;
 };
 
@@ -180,6 +186,11 @@ function ActivePassCard({
       <p className="mt-3 text-xs leading-5 text-zinc-300">
         {activePass.booking.charger.exactAddress}
       </p>
+      {activePass.booking.charger.accessInstructions && (
+        <p className="mt-2 text-xs leading-5 text-zinc-400">
+          {activePass.booking.charger.accessInstructions}
+        </p>
+      )}
       <div className="mt-3 flex items-center justify-between rounded-xl border border-white/10 bg-black/30 px-3 py-2.5">
         <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
           Unlock PIN
@@ -244,6 +255,7 @@ export default function ChargerMap({
   const [filter, setFilter] = useState<StationFilter>("ALL");
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [bookingRestoreError, setBookingRestoreError] = useState<string | null>(null);
   const [locationSearch, setLocationSearch] = useState("");
   const [locationResults, setLocationResults] = useState<LocationResult[]>([]);
   const [locationSearchError, setLocationSearchError] = useState<string | null>(
@@ -307,6 +319,32 @@ export default function ChargerMap({
     const timer = window.setTimeout(() => requestGps(false), 0);
     return () => window.clearTimeout(timer);
   }, [requestGps]);
+
+  useEffect(() => {
+    if (user.role !== "DRIVER") return;
+    let active = true;
+    fetch("/api/bookings", { cache: "no-store" })
+      .then((response) => parseApiResponse(response, bookingsResponseSchema))
+      .then((bookings) => {
+        if (active && bookings[0]) {
+          setActivePass({
+            booking: bookings[0],
+            chargerId: bookings[0].chargerId,
+          });
+        }
+      })
+      .catch((error: unknown) => {
+        if (active) {
+          setBookingRestoreError(
+            error instanceof Error ? error.message : "Unable to restore your booking.",
+          );
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [user.role]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -463,14 +501,16 @@ export default function ChargerMap({
                     : `${charger.powerKw} kW · estimated rate`}
                 </p>
                 <p className="font-semibold text-white">
-                  {inrFormatter.format(charger.pricePerHour)} / hour
+                  {charger.isCommunityHost
+                    ? `${inrFormatter.format(charger.pricePerHour)} / hour`
+                    : "Price set by operator"}
                 </p>
                 <button
                   type="button"
                   onClick={() => setSelectedCharger(charger)}
                   className="mt-1 w-full rounded-lg bg-[#1ED760] px-3 py-2 text-xs font-extrabold text-zinc-950 hover:bg-[#A3FF12]"
                 >
-                  Book station
+                  {charger.isCommunityHost ? "Book station" : "View station"}
                 </button>
               </div>
             </Popup>
@@ -627,6 +667,11 @@ export default function ChargerMap({
               {errorMessage}
             </p>
           )}
+          {bookingRestoreError && (
+            <p className="m-1 rounded-2xl border border-amber-300/20 bg-amber-300/[0.06] p-3 text-xs text-amber-200" role="alert">
+              Could not restore your active booking: {bookingRestoreError}
+            </p>
+          )}
           {!isLoading &&
             !errorMessage &&
             filteredChargers.map((charger, index) => {
@@ -668,8 +713,14 @@ export default function ChargerMap({
                   </div>
                   <div className="mt-3 flex items-center justify-between">
                     <span className="text-xs font-bold text-zinc-100">
-                      {inrFormatter.format(charger.pricePerHour)}
-                      <span className="ml-1 text-[10px] font-medium text-zinc-500">/ hr est.</span>
+                      {charger.isCommunityHost ? (
+                        <>
+                          {inrFormatter.format(charger.pricePerHour)}
+                          <span className="ml-1 text-[10px] font-medium text-zinc-500">/ hr est.</span>
+                        </>
+                      ) : (
+                        "Price set by operator"
+                      )}
                     </span>
                     <span className="text-[10px] font-bold text-zinc-500 transition group-hover:text-lime-200">
                       {isSelected ? "SELECTED" : "SELECT →"}
