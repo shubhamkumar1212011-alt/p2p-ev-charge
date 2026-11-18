@@ -1,0 +1,845 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ChargeShare — Bengaluru Tech Summit 2026 Investor &amp; Partner Deck</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
+  <style>
+    :root {
+      --bg: #071a36;
+      --navy: #0b2447;
+      --card: rgba(255, 255, 255, 0.06);
+      --line: rgba(255, 255, 255, 0.14);
+      --green: #19c37d;
+      --sky: #7fb8ff;
+      --text: #f8fafc;
+      --muted: #cbd5e1;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: radial-gradient(1200px 700px at 78% 25%, #17407c 0%, #0b2447 52%, #051226 100%);
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    header.topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 13px 28px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(5, 18, 38, 0.78);
+      backdrop-filter: blur(10px);
+      z-index: 10;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px; letter-spacing: -0.02em; }
+    .brand-badge {
+      width: 32px; height: 32px; border-radius: 9px; background: var(--green); color: var(--bg);
+      display: grid; place-items: center; font-weight: 900;
+    }
+    .controls { display: flex; align-items: center; gap: 10px; }
+    button.ctrl {
+      background: var(--card); color: var(--text); border: 1px solid var(--line);
+      padding: 7px 14px; border-radius: 999px; font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+    button.ctrl:hover { background: rgba(255, 255, 255, 0.14); }
+    button.ctrl.primary { background: var(--green); color: var(--bg); border-color: var(--green); font-weight: 800; }
+
+    main.deck { flex: 1; position: relative; }
+    section.slide {
+      position: absolute; inset: 0; padding: 30px 52px;
+      display: none; grid-template-columns: 1.12fr 0.88fr; gap: 34px; align-items: center;
+      max-width: 1340px; margin: 0 auto;
+    }
+    section.slide.active { display: grid; }
+    section.slide.full { grid-template-columns: 1fr; align-content: center; }
+
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.13em; color: var(--green); margin-bottom: 10px;
+    }
+    h1 { font-size: clamp(30px, 3.8vw, 50px); font-weight: 800; line-height: 1.1; letter-spacing: -0.03em; }
+    h1 span, h2 span { color: var(--green); }
+    h2 { font-size: clamp(25px, 2.9vw, 38px); font-weight: 800; line-height: 1.15; letter-spacing: -0.02em; }
+    p.lead { margin-top: 14px; font-size: 16px; line-height: 1.6; color: var(--muted); max-width: 610px; }
+
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 24px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 20px; }
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 20px;
+    }
+    .card h3 { font-size: 16px; font-weight: 700; margin-bottom: 7px; color: #fff; }
+    .card p, .card li { font-size: 13.5px; line-height: 1.55; color: var(--muted); }
+    .card ul { padding-left: 18px; display: grid; gap: 6px; margin-top: 6px; }
+    .stat { font-size: 32px; font-weight: 800; color: var(--green); margin-bottom: 6px; letter-spacing: -0.02em; }
+    .cite { margin-top: 14px; font-size: 11px; color: #94a3b8; }
+
+    .canvas-box {
+      position: relative; width: 100%; height: 430px; border-radius: 24px;
+      border: 1px solid var(--line); background: rgba(4, 15, 32, 0.7);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45); overflow: hidden;
+    }
+    .canvas-box canvas { width: 100% !important; height: 100% !important; display: block; cursor: grab; }
+    .chip {
+      position: absolute; background: rgba(7, 26, 54, 0.82); border: 1px solid var(--line);
+      backdrop-filter: blur(8px); padding: 8px 14px; border-radius: 12px; font-size: 11.5px; pointer-events: none;
+    }
+    .chip b { display: block; font-size: 13.5px; color: #fff; margin-top: 2px; }
+
+    .pill-row { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 18px; }
+    .pill {
+      padding: 7px 13px; border-radius: 999px; background: rgba(25, 195, 125, 0.14);
+      border: 1px solid rgba(25, 195, 125, 0.4); font-size: 12.5px; font-weight: 600; color: #a7f3d0;
+    }
+
+    .qr-card {
+      margin-top: 20px; display: inline-flex; align-items: center; gap: 14px;
+      padding: 10px 16px; border-radius: 16px; background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--line);
+    }
+    .qr-card img { width: 64px; height: 64px; border-radius: 8px; background: #fff; padding: 4px; }
+
+    /* Interactive Simulator on Slide 4 */
+    .sim-box {
+      margin-top: 22px; display: grid; grid-template-columns: 1fr 1fr; gap: 22px;
+      background: rgba(5, 18, 38, 0.65); border: 1px solid var(--line); border-radius: 20px; padding: 22px;
+    }
+    .slider-group { display: grid; gap: 16px; }
+    .slider-item label { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+    .slider-item input[type="range"] { width: 100%; accent-color: var(--green); cursor: pointer; }
+    .sim-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; align-items: center; }
+    .sim-kpi { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+    .sim-kpi span { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; }
+    .sim-kpi b { display: block; font-size: 20px; color: var(--green); margin-top: 4px; }
+
+    footer.bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 11px 28px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted);
+      background: rgba(5, 18, 38, 0.78);
+    }
+    .dots { display: flex; gap: 8px; }
+    .dot { width: 9px; height: 9px; border-radius: 999px; background: rgba(255, 255, 255, 0.25); cursor: pointer; }
+    .dot.active { width: 26px; background: var(--green); }
+
+    @media print {
+      body { height: auto; overflow: visible; background: #071a36 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      header.topbar, footer.bar { display: none; }
+      section.slide { position: relative; display: grid !important; page-break-after: always; min-height: 95vh; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-badge">⚡</div>
+      <span>Charge<span style="color:#19c37d">Share</span> <span style="font-weight:500;font-size:12.5px;color:#94a3b8;margin-left:6px;">Bengaluru Tech Summit 2026 · BIEC</span></span>
+    </div>
+    <div class="controls">
+      <button class="ctrl" onclick="prevSlide()">← Prev</button>
+      <button class="ctrl" onclick="nextSlide()">Next →</button>
+      <button class="ctrl" onclick="toggleFull()">Full Screen</button>
+      <button class="ctrl primary" onclick="window.print()">Save PDF</button>
+    </div>
+  </header>
+
+  <main class="deck">
+    <!-- SLIDE 1: HERO + LIVE 3D EV & CHARGER + QR -->
+    <section class="slide active" data-idx="0">
+      <div>
+        <div class="eyebrow">Peer-to-Peer EV Infrastructure · Live Product</div>
+        <h1>Airbnb for <span>Neighbourhood</span> EV Charging.</h1>
+        <p class="lead">
+          Turning India's idle residential &amp; workplace Type 2 wallboxes into a trusted booking network—secured by 6-digit hardware relay PINs, Razorpay escrow, and Charge &amp; Chill discovery.
+        </p>
+        <div class="pill-row">
+          <span class="pill">Zero Capex Expansion</span>
+          <span class="pill">6-Digit Relay PIN Unlock</span>
+          <span class="pill">Razorpay Escrow Protection</span>
+        </div>
+        <div class="qr-card">
+          <img src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=https://p2p-ev-charge.vercel.app" alt="Scan to open live ChargeShare app" />
+          <div>
+            <div style="font-size:11px;font-weight:700;color:#19c37d;letter-spacing:0.08em;">SCAN TO TEST LIVE APP</div>
+            <div style="font-size:15px;font-weight:800;margin-top:2px;">p2p-ev-charge.vercel.app</div>
+            <div style="font-size:12px;color:#94a3b8;margin-top:2px;">Full-stack Next.js + Neon PostgreSQL + Razorpay</div>
+          </div>
+        </div>
+      </div>
+      <div class="canvas-box">
+        <canvas id="heroCanvas"></canvas>
+        <div class="chip" style="top:16px;left:16px;">Live 3D Telemetry<b>7.4 kW · Type 2 AC</b></div>
+        <div class="chip" style="bottom:16px;right:16px;">Interactive Model<b style="color:#19c37d;">Drag to rotate 360°</b></div>
+      </div>
+    </section>
+
+    <!-- SLIDE 2: 2026 INDIA EV MARKET GAP -->
+    <section class="slide full" data-idx="1">
+      <div>
+        <div class="eyebrow">2026 India EV Infrastructure Gap</div>
+        <h2><span>10M+ EVs</span> on Indian roads, yet neighbourhood charging is scarce.</h2>
+        <div class="grid-3">
+          <div class="card">
+            <div class="stat">1 : 190+</div>
+            <h3>Charger-to-EV Bottleneck</h3>
+            <p>India crossed 10 million registered EVs in 2026 with ~52,700 public stations—far behind the global benchmark of 1 charger per 6–20 EVs.</p>
+          </div>
+          <div class="card">
+            <div class="stat">71% Home</div>
+            <h3>Untapped Residential Supply</h3>
+            <p>71% of Indian EV owners rely on home/society charging, yet private 7.4 kW wallboxes sit idle 18+ hours daily with no safe sharing layer.</p>
+          </div>
+          <div class="card">
+            <div class="stat">₹18L+ Capex</div>
+            <h3>Slow Public DC Expansion</h3>
+            <p>Commercial fast-charging hubs require heavy transformer upgrades, real estate leases, and long BESCOM/DISCOM approvals.</p>
+          </div>
+        </div>
+        <p class="cite">Sources: MoRTH / VAHAN Lok Sabha 2026 data, IEEFA 2030 Infrastructure Outlook, Bain India EV Survey 2026.</p>
+      </div>
+    </section>
+
+    <!-- SLIDE 3: THE SOLUTION + 3D CONNECTOR SCHEMATIC -->
+    <section class="slide" data-idx="2">
+      <div>
+        <div class="eyebrow">How ChargeShare Works</div>
+        <h2>Verified Bays, <span>PIN Relay</span> &amp; Charge-and-Chill.</h2>
+        <div class="grid-2">
+          <div class="card">
+            <h3>1. EV-Specific Estimator</h3>
+            <p>Drivers select their car (Nexon.ev, MG ZS EV, Tiago.ev) to see exact 20%→80% charging time and ₹ tariff before booking.</p>
+          </div>
+          <div class="card">
+            <h3>2. 6-Digit Hardware PIN</h3>
+            <p>Power relay unlocks strictly when the driver enters their time-bound 6-digit booking PIN at the host unit.</p>
+          </div>
+          <div class="card">
+            <h3>3. Razorpay Escrow</h3>
+            <p>100% auto-refund if a bay is blocked; hosts receive automated payouts after verified sessions.</p>
+          </div>
+          <div class="card">
+            <h3>4. Charge &amp; Chill (450m)</h3>
+            <p>Live OpenStreetMap integration highlights walking-distance cafes, eateries, and restrooms.</p>
+          </div>
+        </div>
+      </div>
+      <div class="canvas-box">
+        <canvas id="plugCanvas"></canvas>
+        <div class="chip" style="top:16px;left:16px;">3D Connector Pinout<b>IEC 62196 Type 2 · 7.4 kW</b></div>
+        <div class="chip" style="bottom:16px;right:16px;">Interactive Schematic<b style="color:#19c37d;">Drag to inspect pins</b></div>
+      </div>
+    </section>
+
+    <!-- SLIDE 4: INTERACTIVE UNIT ECONOMICS SIMULATOR -->
+    <section class="slide full" data-idx="3">
+      <div>
+        <div class="eyebrow">Unit Economics &amp; Live Revenue Model</div>
+        <h2>Asset-light marketplace with <span>14% net take rate</span>.</h2>
+        <div class="grid-3">
+          <div class="card">
+            <div class="stat">₹140/hr</div>
+            <h3>Average Session Tariff</h3>
+            <p>Hosts set ₹120–₹290/hr (~₹15/kWh effective) with zero hardware capex required from ChargeShare.</p>
+          </div>
+          <div class="card">
+            <div class="stat">14% Fee</div>
+            <h3>Transparent Take Rate</h3>
+            <p>Zero monthly subscription for drivers; ChargeShare retains 14% platform fee per completed booking.</p>
+          </div>
+          <div class="card">
+            <div class="stat">South BLR</div>
+            <h3>Hyper-Local Launch Wedge</h3>
+            <p>Dense cluster rollout across JP Nagar, Indiranagar, HSR, and Koramangala apartment societies &amp; cafes.</p>
+          </div>
+        </div>
+
+        <div class="sim-box">
+          <div class="slider-group">
+            <div class="slider-item">
+              <label><span>Active Host Chargers</span><span id="hostCountLabel" style="color:#19c37d;">100 chargers</span></label>
+              <input type="range" id="hostSlider" min="25" max="1000" step="25" value="100" />
+            </div>
+            <div class="slider-item">
+              <label><span>Avg. Daily Booked Hours / Charger</span><span id="hourCountLabel" style="color:#19c37d;">3.5 hrs / day</span></label>
+              <input type="range" id="hourSlider" min="1" max="8" step="0.5" value="3.5" />
+            </div>
+          </div>
+          <div class="sim-metrics">
+            <div class="sim-kpi"><span>Monthly GMV</span><b id="gmvOut">₹14.70L</b></div>
+            <div class="sim-kpi"><span>Host Payouts (86%)</span><b id="hostOut" style="color:#fff;">₹12.64L</b></div>
+            <div class="sim-kpi"><span>Net Revenue (14%)</span><b id="revOut">₹2.06L</b></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 5: LIVE TRACTION + 3D INDIA NETWORK GLOBE -->
+    <section class="slide" data-idx="4">
+      <div>
+        <div class="eyebrow">Live Architecture &amp; Roadmap</div>
+        <h2>Deployed in production—<span>ready for Bengaluru pilot</span>.</h2>
+        <div class="grid-2">
+          <div class="card">
+            <h3>Full-Stack Engine Live</h3>
+            <ul>
+              <li>Next.js 16 + Three.js interactive 3D vehicle, globe &amp; connector scenes.</li>
+              <li>Neon PostgreSQL + Zod-validated APIs &amp; Razorpay signature verification.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Safety &amp; Compliance</h3>
+            <ul>
+              <li>32A/16A MCB, earthing loop check, and IP65 enclosure verification.</li>
+              <li>Time-bound 6-digit relay PIN prevents unauthorized power draw.</li>
+            </ul>
+          </div>
+          <div class="card" style="grid-column: span 2;">
+            <h3>90-Day Pilot Execution Plan</h3>
+            <p><strong>Month 1:</strong> Onboard 25 verified residential &amp; cafe hosts in JP Nagar / Indiranagar · <strong>Month 2:</strong> Deploy ESP32 smart relay PIN kits · <strong>Month 3:</strong> Scale to 100 bays across Bengaluru.</p>
+          </div>
+        </div>
+      </div>
+      <div class="canvas-box">
+        <canvas id="globeCanvas"></canvas>
+        <div class="chip" style="top:16px;left:16px;">3D Corridor Mesh<b>Bengaluru Hub → Pan-India</b></div>
+        <div class="chip" style="bottom:16px;right:16px;">Interactive Globe<b style="color:#19c37d;">Drag to spin network</b></div>
+      </div>
+    </section>
+
+    <!-- SLIDE 6: THE ASK + QR -->
+    <section class="slide full" data-idx="5">
+      <div>
+        <div class="eyebrow">Bengaluru Tech Summit 2026 · Let's Connect</div>
+        <h2>Seeking <span>Teammates, Mentors &amp; Pilot Capital</span>.</h2>
+        <div class="grid-3">
+          <div class="card">
+            <h3>1. Co-Founder / Teammate</h3>
+            <p><strong>Hardware / IoT Engineer</strong> (ESP32 / OCPP smart relay switch for 6-digit PIN) or <strong>Bengaluru Ground Ops</strong> for society onboarding.</p>
+          </div>
+          <div class="card">
+            <h3>2. EV &amp; Policy Mentors</h3>
+            <p>Guidance from <strong>EV infra operators, BESCOM / regulatory advisors, and RWA federations</strong> on scaling residential sharing.</p>
+          </div>
+          <div class="card">
+            <h3>3. Pre-Seed / Grant</h3>
+            <p>Funding our <strong>first 25 verified residential &amp; cafe chargers</strong> in South Bengaluru with smart relay hardware kits.</p>
+          </div>
+        </div>
+        <div class="qr-card" style="margin-top:26px;">
+          <img src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=https://p2p-ev-charge.vercel.app" alt="Live app QR" />
+          <div>
+            <div style="font-size:16px;font-weight:800;color:#fff;">Shubham Tailor <span style="color:#19c37d;font-weight:600;font-size:13px;">· Founder, ChargeShare</span></div>
+            <div style="font-size:13px;color:#cbd5e1;margin-top:3px;">B.Tech CSE @ Dayananda Sagar College of Engineering (DSCE), Bengaluru</div>
+            <div style="font-size:12.5px;color:#7fb8ff;margin-top:3px;">Live Demo: https://p2p-ev-charge.vercel.app</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="bar">
+    <span>← → Arrow Keys to navigate · Drag 3D models on Slides 1, 3 &amp; 5 · Adjust sliders on Slide 4</span>
+    <div class="dots" id="dots"></div>
+    <span id="counter">Slide 1 / 6</span>
+  </footer>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+    const slides = Array.from(document.querySelectorAll('section.slide'));
+    const dotsWrap = document.getElementById('dots');
+    const counter = document.getElementById('counter');
+    let current = 0;
+
+    slides.forEach((_, i) => {
+      const d = document.createElement('div');
+      d.className = 'dot' + (i === 0 ? ' active' : '');
+      d.onclick = () => showSlide(i);
+      dotsWrap.appendChild(d);
+    });
+
+    function showSlide(idx) {
+      current = (idx + slides.length) % slides.length;
+      slides.forEach((s, i) => s.classList.toggle('active', i === current));
+      Array.from(dotsWrap.children).forEach((d, i) => d.classList.toggle('active', i === current));
+      counter.textContent = `Slide ${current + 1} / ${slides.length}`;
+      window.dispatchEvent(new Event('resize'));
+    }
+    window.nextSlide = () => showSlide(current + 1);
+    window.prevSlide = () => showSlide(current - 1);
+    window.toggleFull = () => {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+      else document.exitFullscreen();
+    };
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ') nextSlide();
+      if (e.key === 'ArrowLeft') prevSlide();
+    });
+
+    // Slide 4 Unit Economics Simulator
+    const hostSlider = document.getElementById('hostSlider');
+    const hourSlider = document.getElementById('hourSlider');
+    function updateSim() {
+      const hosts = Number(hostSlider.value);
+      const hrs = Number(hourSlider.value);
+      document.getElementById('hostCountLabel').textContent = `${hosts} chargers`;
+      document.getElementById('hourCountLabel').textContent = `${hrs.toFixed(1)} hrs / day`;
+      const gmv = hosts * hrs * 140 * 30;
+      const hostPay = gmv * 0.86;
+      const netRev = gmv * 0.14;
+      const fmt = (v) => v >= 100000 ? `₹${(v / 100000).toFixed(2)}L` : `₹${Math.round(v / 1000)}K`;
+      document.getElementById('gmvOut').textContent = fmt(gmv);
+      document.getElementById('hostOut').textContent = fmt(hostPay);
+      document.getElementById('revOut').textContent = fmt(netRev);
+    }
+    hostSlider.addEventListener('input', updateSim);
+    hourSlider.addEventListener('input', updateSim);
+    updateSim();
+
+    // 3D Scene 1: Dark Studio Rim-Lit Fastback EV + Open-Loop Halo Charger
+    function initHero3D(canvas) {
+      const parent = canvas.parentElement;
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.25;
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
+      camera.position.set(1.8, 2.05, 8.8);
+
+      // Dramatic dark-studio blue rim lighting matching reference
+      const topBlue = new THREE.SpotLight(0x2563eb, 18, 25, Math.PI / 3, 0.65, 1);
+      topBlue.position.set(-0.5, 6.5, -2.5);
+      scene.add(topBlue);
+
+      const backRim = new THREE.DirectionalLight(0x38bdf8, 3.2);
+      backRim.position.set(-3.5, 4.2, -5.0);
+      scene.add(backRim);
+
+      const frontFill = new THREE.DirectionalLight(0x1d4ed8, 1.3);
+      frontFill.position.set(5.5, 2.2, 4.5);
+      scene.add(frontFill);
+
+      const portGlow = new THREE.PointLight(0x38bdf8, 3.5, 4.5);
+      portGlow.position.set(-1.1, 1.15, 1.2);
+      scene.add(portGlow);
+
+      const pillarGlow = new THREE.PointLight(0x38bdf8, 3.2, 5.0);
+      pillarGlow.position.set(-3.1, 1.5, 0.9);
+      scene.add(pillarGlow);
+
+      const root = new THREE.Group();
+      scene.add(root);
+
+      // Soft radial blue floor glow beneath car & charger
+      const glowCanvas = document.createElement('canvas');
+      glowCanvas.width = 512;
+      glowCanvas.height = 512;
+      const gctx = glowCanvas.getContext('2d');
+      const grad = gctx.createRadialGradient(256, 256, 15, 256, 256, 240);
+      grad.addColorStop(0, 'rgba(37, 99, 235, 0.42)');
+      grad.addColorStop(0.5, 'rgba(14, 116, 144, 0.16)');
+      grad.addColorStop(1, 'rgba(2, 6, 23, 0)');
+      gctx.fillStyle = grad;
+      gctx.fillRect(0, 0, 512, 512);
+      const floorTex = new THREE.CanvasTexture(glowCanvas);
+
+      const floorGlow = new THREE.Mesh(
+        new THREE.PlaneGeometry(11.5, 7.5),
+        new THREE.MeshBasicMaterial({ map: floorTex, transparent: true, depthWrite: false })
+      );
+      floorGlow.rotation.x = -Math.PI / 2;
+      floorGlow.position.set(-0.3, 0.01, 0.2);
+      root.add(floorGlow);
+
+      // --- SCULPTED FASTBACK EV SEDAN (Right) ---
+      const car = new THREE.Group();
+      car.position.set(0.85, 0, 0.25);
+      const carW = 1.86;
+
+      // Dark obsidian-blue metallic clearcoat paint
+      const bodyMat = new THREE.MeshPhysicalMaterial({
+        color: 0x050e21,
+        metalness: 0.72,
+        roughness: 0.22,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.08
+      });
+
+      // Aerodynamic lower body profile with wheel wells
+      const lower = new THREE.Shape();
+      lower.moveTo(-2.22, 0.34);
+      lower.lineTo(-1.74, 0.34);
+      lower.absarc(-1.35, 0.34, 0.39, Math.PI, 0, true);
+      lower.lineTo(0.96, 0.34);
+      lower.absarc(1.35, 0.34, 0.39, Math.PI, 0, true);
+      lower.lineTo(2.24, 0.34);
+      lower.quadraticCurveTo(2.36, 0.48, 2.26, 0.72); // sharp front bumper nose
+      lower.quadraticCurveTo(1.75, 0.88, 1.02, 0.96); // long sleek hood
+      lower.lineTo(-1.58, 1.02); // beltline
+      lower.quadraticCurveTo(-2.14, 0.98, -2.26, 0.78); // fastback trunk lip
+      lower.quadraticCurveTo(-2.30, 0.52, -2.22, 0.34);
+
+      const lowerGeo = new THREE.ExtrudeGeometry(lower, {
+        depth: carW,
+        bevelEnabled: true,
+        bevelSize: 0.11,
+        bevelThickness: 0.11,
+        bevelSegments: 10,
+        curveSegments: 36
+      });
+      lowerGeo.translate(0, 0, -carW / 2);
+      car.add(new THREE.Mesh(lowerGeo, bodyMat));
+
+      // Sweeping coupe glasshouse roof
+      const cabin = new THREE.Shape();
+      cabin.moveTo(-1.62, 0.98);
+      cabin.quadraticCurveTo(-0.92, 1.48, -0.18, 1.50);
+      cabin.quadraticCurveTo(0.48, 1.50, 1.04, 0.95);
+      cabin.closePath();
+
+      const cabinGeo = new THREE.ExtrudeGeometry(cabin, {
+        depth: carW - 0.26,
+        bevelEnabled: true,
+        bevelSize: 0.08,
+        bevelThickness: 0.08,
+        bevelSegments: 8,
+        curveSegments: 32
+      });
+      cabinGeo.translate(0, 0, -(carW - 0.26) / 2);
+      const glassMat = new THREE.MeshPhysicalMaterial({
+        color: 0x020611,
+        metalness: 0.2,
+        roughness: 0.05,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.04
+      });
+      car.add(new THREE.Mesh(cabinGeo, glassMat));
+
+      // Glowing cyan roofline accent strip
+      const roofCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(-1.58, 1.05, carW / 2 - 0.06),
+        new THREE.Vector3(-0.85, 1.46, carW / 2 - 0.10),
+        new THREE.Vector3(-0.15, 1.54, carW / 2 - 0.10),
+        new THREE.Vector3(0.45, 1.47, carW / 2 - 0.10),
+        new THREE.Vector3(1.02, 1.02, carW / 2 - 0.06),
+      ]);
+      car.add(new THREE.Mesh(
+        new THREE.TubeGeometry(roofCurve, 48, 0.012, 8),
+        new THREE.MeshBasicMaterial({ color: 0x38bdf8 })
+      ));
+
+      // Aerodynamic side mirrors
+      [-1, 1].forEach((s) => {
+        const mirror = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.09, 0.24), bodyMat);
+        mirror.position.set(0.78, 1.04, s * (carW / 2 + 0.14));
+        car.add(mirror);
+      });
+
+      // Stealth black wheels + cyan wheel-well rim accent
+      const tireGeo = new THREE.CylinderGeometry(0.41, 0.41, 0.28, 40);
+      tireGeo.rotateX(Math.PI / 2);
+      const rimGeo = new THREE.CylinderGeometry(0.27, 0.27, 0.29, 32);
+      rimGeo.rotateX(Math.PI / 2);
+
+      [[-1.35, 1], [1.35, 1], [-1.35, -1], [1.35, -1]].forEach(([x, s]) => {
+        const wg = new THREE.Group();
+        wg.add(new THREE.Mesh(tireGeo, new THREE.MeshStandardMaterial({ color: 0x03050a, roughness: 0.85 })));
+        wg.add(new THREE.Mesh(rimGeo, new THREE.MeshStandardMaterial({ color: 0x0b162c, metalness: 0.85, roughness: 0.25 })));
+        wg.position.set(x, 0.41, s * (carW / 2 - 0.02));
+        car.add(wg);
+
+        if (s === 1) {
+          const archGlow = new THREE.Mesh(
+            new THREE.RingGeometry(0.42, 0.445, 36, 1, 0.15, Math.PI - 0.3),
+            new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide })
+          );
+          archGlow.position.set(x, 0.41, carW / 2 + 0.115);
+          car.add(archGlow);
+        }
+      });
+
+      // Sharp angular V-shaped LED DRL headlights (matching screenshot)
+      const drlMat = new THREE.MeshBasicMaterial({ color: 0xbae6fd });
+      [-1, 1].forEach((s) => {
+        const zBase = s * 0.66;
+        const pts = [
+          new THREE.Vector3(2.14, 0.72, zBase + s * 0.26),
+          new THREE.Vector3(2.33, 0.63, zBase + s * 0.04),
+          new THREE.Vector3(2.26, 0.67, zBase - s * 0.14),
+          new THREE.Vector3(2.35, 0.61, zBase - s * 0.02)
+        ];
+        const drlCurve = new THREE.CatmullRomCurve3(pts);
+        car.add(new THREE.Mesh(new THREE.TubeGeometry(drlCurve, 24, 0.018, 8), drlMat));
+      });
+
+      // Glowing cyan rear-quarter charging port
+      const portDot = new THREE.Mesh(
+        new THREE.SphereGeometry(0.055, 16, 16),
+        new THREE.MeshBasicMaterial({ color: 0x7dd3fc })
+      );
+      portDot.position.set(-1.68, 0.90, carW / 2 + 0.11);
+      car.add(portDot);
+
+      root.add(car);
+
+      // --- TALL OPEN-LOOP HALO CHARGING PILLAR (Left, matching screenshot) ---
+      const charger = new THREE.Group();
+      charger.position.set(-3.05, 0, 0.75);
+      charger.rotation.y = 0.38;
+
+      // Outer sculpted pillar frame with hollow stadium cutout
+      const outer = new THREE.Shape();
+      outer.moveTo(-0.56, 0);
+      outer.lineTo(0.56, 0);
+      outer.lineTo(0.56, 2.72);
+      outer.quadraticCurveTo(0, 2.92, -0.56, 2.72);
+      outer.closePath();
+
+      const hole = new THREE.Path();
+      const hw = 0.28, hb = 0.68, ht = 2.24, hr = 0.28;
+      hole.moveTo(-hw, hb + hr);
+      hole.lineTo(-hw, ht - hr);
+      hole.absarc(0, ht - hr, hr, Math.PI, 0, true);
+      hole.lineTo(hw, hb + hr);
+      hole.absarc(0, hb + hr, hr, 0, Math.PI, true);
+      outer.holes.push(hole);
+
+      const pillarGeo = new THREE.ExtrudeGeometry(outer, {
+        depth: 0.38,
+        bevelEnabled: true,
+        bevelSize: 0.04,
+        bevelThickness: 0.04,
+        bevelSegments: 6,
+        curveSegments: 28
+      });
+      pillarGeo.translate(0, 0, -0.19);
+      const pillarMat = new THREE.MeshPhysicalMaterial({
+        color: 0x0b2249,
+        metalness: 0.65,
+        roughness: 0.24,
+        clearcoat: 0.9
+      });
+      charger.add(new THREE.Mesh(pillarGeo, pillarMat));
+
+      // Glowing cyan inner halo outline
+      const haloPts = [];
+      for (let i = 0; i <= 24; i++) {
+        const a = Math.PI - (i / 24) * Math.PI;
+        haloPts.push(new THREE.Vector3(Math.cos(a) * hw, ht - hr + Math.sin(a) * hr, 0.235));
+      }
+      for (let i = 0; i <= 24; i++) {
+        const a = -(i / 24) * Math.PI;
+        haloPts.push(new THREE.Vector3(Math.cos(a) * hw, hb + hr + Math.sin(a) * hr, 0.235));
+      }
+      haloPts.push(haloPts[0].clone());
+      const haloCurve = new THREE.CatmullRomCurve3(haloPts);
+      charger.add(new THREE.Mesh(
+        new THREE.TubeGeometry(haloCurve, 96, 0.016, 8),
+        new THREE.MeshBasicMaterial({ color: 0x7dd3fc })
+      ));
+
+      // Side cable guide rail & glowing socket node
+      const railCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(0.62, 0.1, 0.12),
+        new THREE.Vector3(0.62, 2.38, 0.12),
+        new THREE.Vector3(0.48, 2.46, 0.08)
+      ]);
+      charger.add(new THREE.Mesh(new THREE.TubeGeometry(railCurve, 32, 0.022, 8), pillarMat));
+
+      const socketNode = new THREE.Mesh(
+        new THREE.SphereGeometry(0.055, 16, 16),
+        new THREE.MeshBasicMaterial({ color: 0x7dd3fc })
+      );
+      socketNode.position.set(-0.24, 1.48, 0.16);
+      charger.add(socketNode);
+
+      root.add(charger);
+
+      // Draped charging cable from pillar inner socket -> rear-left car port
+      const cableCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(-3.16, 1.48, 0.96),
+        new THREE.Vector3(-2.78, 0.85, 1.32),
+        new THREE.Vector3(-2.15, 0.42, 1.36),
+        new THREE.Vector3(-1.35, 0.56, 1.34),
+        new THREE.Vector3(-0.83, 0.90, 1.29)
+      ]);
+      root.add(new THREE.Mesh(
+        new THREE.TubeGeometry(cableCurve, 80, 0.032, 10),
+        new THREE.MeshStandardMaterial({ color: 0x071326, metalness: 0.4, roughness: 0.4 })
+      ));
+
+      const pulses = Array.from({ length: 4 }, () => {
+        const m = new THREE.Mesh(
+          new THREE.SphereGeometry(0.048, 12, 12),
+          new THREE.MeshBasicMaterial({ color: 0x7dd3fc })
+        );
+        root.add(m);
+        return m;
+      });
+
+      let yaw = -0.14, drag = false, lx = 0;
+      canvas.addEventListener('pointerdown', (e) => { drag = true; lx = e.clientX; });
+      window.addEventListener('pointerup', () => drag = false);
+      window.addEventListener('pointermove', (e) => { if (drag) { yaw += (e.clientX - lx) * 0.008; lx = e.clientX; } });
+
+      const fit = () => {
+        const w = Math.max(1, parent.clientWidth), h = Math.max(1, parent.clientHeight);
+        renderer.setSize(w, h, false);
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+      };
+      window.addEventListener('resize', fit);
+      fit();
+
+      const clock = new THREE.Clock();
+      (function loop() {
+        requestAnimationFrame(loop);
+        if (!parent.offsetParent) return;
+        const t = clock.getElapsedTime();
+        if (!drag) root.rotation.y = yaw + Math.sin(t * 0.35) * 0.14;
+        else root.rotation.y = yaw;
+        camera.lookAt(-0.35, 0.95, 0.3);
+        pulses.forEach((p, i) => p.position.copy(cableCurve.getPointAt(((t * 0.38) + i / pulses.length) % 1)));
+        renderer.render(scene, camera);
+      })();
+    }
+
+    // 3D Scene 2: Type 2 Connector Pinout
+    function initPlug3D(canvas) {
+      const parent = canvas.parentElement;
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 60);
+      camera.position.set(0, 1.6, 6.2); camera.lookAt(0, 1.2, 0);
+
+      scene.add(new THREE.HemisphereLight(0xcfe3ff, 0x0b1c3a, 1.3));
+      const key = new THREE.DirectionalLight(0xffffff, 2.2); key.position.set(4, 6, 6); scene.add(key);
+
+      const plug = new THREE.Group(); plug.position.set(0, 1.25, 0);
+      const head = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.15, 0.65, 48), new THREE.MeshStandardMaterial({ color: 0x1d2b45, metalness: 0.4, roughness: 0.4 }));
+      head.rotation.x = Math.PI / 2;
+      const face = new THREE.Mesh(new THREE.CircleGeometry(1.0, 48), new THREE.MeshStandardMaterial({ color: 0x08101e, roughness: 0.7 }));
+      face.position.z = 0.335;
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(1.02, 0.04, 12, 64), new THREE.MeshBasicMaterial({ color: 0x19c37d }));
+      rim.position.z = 0.34;
+      plug.add(head, face, rim);
+
+      const gold = new THREE.MeshStandardMaterial({ color: 0xe9c46a, metalness: 0.9, roughness: 0.22 });
+      [[-0.58,0.28],[-0.2,0.48],[0.2,0.48],[0.58,0.28],[0,-0.06],[-0.35,-0.52],[0.35,-0.52]].forEach(([x,y]) => {
+        const g = new THREE.CylinderGeometry(0.075, 0.075, 0.34, 20); g.rotateX(Math.PI / 2);
+        const p = new THREE.Mesh(g, gold); p.position.set(x, y, 0.46); plug.add(p);
+      });
+      scene.add(plug);
+
+      let yaw = -0.35, drag = false, lx = 0;
+      canvas.addEventListener('pointerdown', (e) => { drag = true; lx = e.clientX; });
+      window.addEventListener('pointerup', () => drag = false);
+      window.addEventListener('pointermove', (e) => { if (drag) { yaw += (e.clientX - lx) * 0.008; lx = e.clientX; } });
+
+      const fit = () => {
+        const w = Math.max(1, parent.clientWidth), h = Math.max(1, parent.clientHeight);
+        renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+      };
+      window.addEventListener('resize', fit); fit();
+
+      const clock = new THREE.Clock();
+      (function loop() {
+        requestAnimationFrame(loop);
+        if (!parent.offsetParent) return;
+        const t = clock.getElapsedTime();
+        if (!drag) yaw = Math.sin(t * 0.7) * 0.45;
+        plug.rotation.y = yaw;
+        renderer.render(scene, camera);
+      })();
+    }
+
+    // 3D Scene 3: India Network Globe
+    function initGlobe3D(canvas) {
+      const parent = canvas.parentElement;
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 50);
+      camera.position.set(0, 0, 6.8);
+
+      const tilt = new THREE.Group(); tilt.rotation.x = 0.36; scene.add(tilt);
+      const globe = new THREE.Group(); tilt.add(globe);
+      const R = 2;
+      globe.add(new THREE.Mesh(new THREE.SphereGeometry(R * 0.995, 48, 32), new THREE.MeshBasicMaterial({ color: 0x0a1f40, transparent: true, opacity: 0.92 })));
+
+      const D = 1800, dp = new Float32Array(D * 3), ga = Math.PI * (3 - Math.sqrt(5));
+      for (let i = 0; i < D; i++) {
+        const y = 1 - (i / (D - 1)) * 2, r = Math.sqrt(1 - y * y), th = ga * i;
+        dp[i * 3] = Math.cos(th) * r * R; dp[i * 3 + 1] = y * R; dp[i * 3 + 2] = Math.sin(th) * r * R;
+      }
+      const dg = new THREE.BufferGeometry(); dg.setAttribute('position', new THREE.BufferAttribute(dp, 3));
+      globe.add(new THREE.Points(dg, new THREE.PointsMaterial({ color: 0x4c8fe0, size: 0.03, transparent: true, opacity: 0.85 })));
+
+      const latLng = (la, lo) => {
+        const p = (90 - la) * Math.PI / 180, t = (lo + 180) * Math.PI / 180;
+        return new THREE.Vector3(-R * Math.sin(p) * Math.cos(t), R * Math.cos(p), R * Math.sin(p) * Math.sin(t));
+      };
+      const cities = [[12.97,77.59],[19.08,72.88],[28.61,77.21],[13.08,80.27],[17.38,78.48],[26.91,75.78],[18.52,73.86]];
+      const hub = latLng(12.97, 77.59);
+      const arcs = [];
+      cities.forEach(([la, lo], idx) => {
+        const p = latLng(la, lo);
+        const dot = new THREE.Mesh(new THREE.SphereGeometry(idx === 0 ? 0.065 : 0.045, 16, 16), new THREE.MeshBasicMaterial({ color: idx === 0 ? 0xffffff : 0x19c37d }));
+        dot.position.copy(p); globe.add(dot);
+        if (idx > 0) {
+          const mid = hub.clone().add(p).multiplyScalar(0.5).normalize().multiplyScalar(R * 1.24);
+          const curve = new THREE.QuadraticBezierCurve3(hub, mid, p);
+          globe.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 40, 0.007, 6), new THREE.MeshBasicMaterial({ color: 0x19c37d, transparent: true, opacity: 0.6 })));
+          const pulse = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 10), new THREE.MeshBasicMaterial({ color: 0xbfffe0 }));
+          globe.add(pulse); arcs.push({ curve, pulse, off: idx * 0.15 });
+        }
+      });
+
+      const focus = latLng(20, 78);
+      let yaw = Math.atan2(-focus.x, focus.z), drag = false, lx = 0;
+      canvas.addEventListener('pointerdown', (e) => { drag = true; lx = e.clientX; });
+      window.addEventListener('pointerup', () => drag = false);
+      window.addEventListener('pointermove', (e) => { if (drag) { yaw += (e.clientX - lx) * 0.008; lx = e.clientX; } });
+
+      const fit = () => {
+        const w = Math.max(1, parent.clientWidth), h = Math.max(1, parent.clientHeight);
+        renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+      };
+      window.addEventListener('resize', fit); fit();
+
+      const clock = new THREE.Clock();
+      (function loop() {
+        requestAnimationFrame(loop);
+        if (!parent.offsetParent) return;
+        const t = clock.getElapsedTime();
+        if (!drag) yaw += 0.002;
+        globe.rotation.y = yaw;
+        arcs.forEach((a) => a.pulse.position.copy(a.curve.getPointAt(((t * 0.25) + a.off) % 1)));
+        renderer.render(scene, camera);
+      })();
+    }
+
+    initHero3D(document.getElementById('heroCanvas'));
+    initPlug3D(document.getElementById('plugCanvas'));
+    initGlobe3D(document.getElementById('globeCanvas'));
+  </script>
+</body>
+</html>
