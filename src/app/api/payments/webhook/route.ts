@@ -94,19 +94,18 @@ export async function POST(request: Request) {
     });
     if (!booking) return Response.json({ received: true });
     if (
-      booking.status !== BookingStatus.PENDING &&
-      booking.paymentId === paymentId
-    ) {
-      return Response.json({ received: true });
-    }
-
-    if (
       amount !== Math.round(booking.totalAmount * 100) ||
       currency !== "INR"
     ) {
       return Response.json({ error: "Payment amount or currency does not match." }, {
         status: 400,
       });
+    }
+    if (
+      booking.status !== BookingStatus.PENDING &&
+      booking.paymentId === paymentId
+    ) {
+      return Response.json({ received: true });
     }
     if (booking.status !== BookingStatus.PENDING) {
       return Response.json({ received: true });

@@ -210,7 +210,7 @@ export default function BookingPanel({
               ondismiss: () => {
                 if (settled) return;
                 settled = true;
-                reject(new Error("Payment was cancelled. You can retry shortly."));
+                reject(new Error("Checkout closed before verification. You can retry shortly."));
               },
             },
           });

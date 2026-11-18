@@ -75,8 +75,8 @@ const PHOTO_CARDS = [
   },
   {
     src: "/images/connector-guide.jpg",
-    tag: "Host Economics",
-    title: "Monetize idle parking safely",
+    tag: "Host Listings",
+    title: "Share an idle charger",
     desc: "Set a per-hour tariff and share your charger listing with nearby drivers.",
   },
 ];
@@ -193,7 +193,7 @@ export default function LandingShowcase({ onAuthenticated, sessionError }: Landi
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-2">
           <span className="flex items-center gap-2">
             <span className="h-1.5 w-1.5 rounded-full bg-[#19c37d]" />
-            Peer-to-Peer EV Charging Marketplace · UPI &amp; Card Escrow via Razorpay
+            Peer-to-Peer EV Charging Marketplace · UPI &amp; Card Payments via Razorpay
           </span>
           <div className="hidden sm:flex items-center gap-5">
             <Link href="/safety" className="hover:text-white">
@@ -287,12 +287,12 @@ export default function LandingShowcase({ onAuthenticated, sessionError }: Landi
             {/* Trust Metrics Strip */}
             <div className="mt-6 grid grid-cols-3 gap-4 border-t border-white/15 pt-5 max-w-lg text-xs">
               <div>
-                <p className="text-lg font-extrabold text-white">0% Sub Fee</p>
-                <p className="text-sky-200/80">Pay strictly per session</p>
+                <p className="text-lg font-extrabold text-white">Per-hour rates</p>
+                <p className="text-sky-200/80">Set by each host</p>
               </div>
               <div>
                 <p className="text-lg font-extrabold text-[#19c37d]">6-Digit PIN</p>
-                <p className="text-sky-200/80">Hardware relay unlock</p>
+                <p className="text-sky-200/80">For confirmed bookings</p>
               </div>
               <div>
                 <p className="text-lg font-extrabold text-white">300m Nearby</p>
@@ -518,7 +518,7 @@ export default function LandingShowcase({ onAuthenticated, sessionError }: Landi
           </div>
           <div className="space-y-2">
             <p className="font-bold text-white uppercase tracking-wider text-[11px]">Support</p>
-            <p>24x7 Driver &amp; Host Assistance via live chat widget or support@chargeshare.in</p>
+            <p>For assistance, use the support chatbot or contact support@chargeshare.in.</p>
           </div>
         </div>
         <div className="mx-auto mt-8 max-w-6xl border-t border-white/10 px-4 pt-6 text-[11px] text-sky-200/60">

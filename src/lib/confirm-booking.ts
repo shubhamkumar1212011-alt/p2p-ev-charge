@@ -128,7 +128,24 @@ export async function confirmBookingAfterPayment(
           select: { id: true },
         });
 
-        if (overlappingBooking) return { kind: "conflict" as const };
+        if (overlappingBooking) {
+          const cancelledBooking = await transaction.booking.updateMany({
+            where: {
+              id: booking.id,
+              ...(options.driverId ? { driverId: options.driverId } : {}),
+              status: BookingStatus.PENDING,
+              razorpayOrderId: options.razorpayOrderId,
+            },
+            data: {
+              status: BookingStatus.CANCELLED,
+              paymentId: options.paymentId,
+            },
+          });
+          return {
+            kind: "conflict" as const,
+            refund: cancelledBooking.count === 1,
+          };
+        }
 
         const unlockPin = randomInt(0, 1_000_000).toString().padStart(6, "0");
         const confirmedBooking = await transaction.booking.update({
@@ -158,8 +175,10 @@ export async function confirmBookingAfterPayment(
     );
 
     if (result.kind === "conflict") {
-      await refundPayment(options.paymentId, expectedAmount, booking.id);
-      return result;
+      if (result.refund) {
+        await refundPayment(options.paymentId, expectedAmount, booking.id);
+      }
+      return { kind: "conflict" };
     }
     if (result.kind === "unavailable") {
       const concurrentConfirmation = await findAlreadyConfirmed(options);
@@ -184,7 +203,21 @@ export async function confirmBookingAfterPayment(
         };
       }
 
-      await refundPayment(options.paymentId, expectedAmount, booking.id);
+      const cancelledBooking = await prisma.booking.updateMany({
+        where: {
+          id: booking.id,
+          ...(options.driverId ? { driverId: options.driverId } : {}),
+          status: BookingStatus.PENDING,
+          razorpayOrderId: options.razorpayOrderId,
+        },
+        data: {
+          status: BookingStatus.CANCELLED,
+          paymentId: options.paymentId,
+        },
+      });
+      if (cancelledBooking.count === 1) {
+        await refundPayment(options.paymentId, expectedAmount, booking.id);
+      }
       return { kind: "conflict" };
     }
     throw error;

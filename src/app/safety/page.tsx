@@ -25,11 +25,11 @@ export default function SafetyPage() {
 
         <div className="grid gap-6 md:grid-cols-2">
           <section className="rounded-2xl border border-slate-200 bg-white p-6">
-            <h2 className="text-base font-bold text-slate-900">1. Electrical &amp; Earthing Checks</h2>
+            <h2 className="text-base font-bold text-slate-900">1. Electrical Safety Guidance</h2>
             <ul className="mt-3 space-y-2 text-sm text-slate-600 list-disc pl-4">
-              <li>Dedicated MCB / RCCB circuit protection (32A for 7.4 kW Type 2; 16A industrial socket for 3.3 kW).</li>
-              <li>Verified earthing loop impedance and weather-sealed IP65 outdoor enclosure.</li>
-              <li>AIS-138 / IEC 62196-2 compliant Type 2 and CCS2 connectors.</li>
+              <li>Ask the host what circuit protection (such as an MCB / RCCB) and earthing are installed; listings are not independently inspected.</li>
+              <li>Check the charger, cable, and connector condition before use.</li>
+              <li>Follow the charger and vehicle manufacturer&apos;s instructions.</li>
             </ul>
           </section>
 
@@ -37,7 +37,7 @@ export default function SafetyPage() {
             <h2 className="text-base font-bold text-slate-900">2. Payment &amp; PIN Unlock</h2>
             <ul className="mt-3 space-y-2 text-sm text-slate-600 list-disc pl-4">
               <li>Payments are processed through Razorpay before a booking is confirmed.</li>
-              <li>Power relay unlocks strictly when the driver enters their unique 6-digit booking PIN.</li>
+              <li>A unique 6-digit PIN is provided for a confirmed booking.</li>
             </ul>
             <p className="mt-3 text-sm text-slate-600">
               Refunds are issued only when a slot cannot be honoured (double-booking); for anything else contact support.
